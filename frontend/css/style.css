@@ -1,0 +1,104 @@
+/* --- 1. Variables Globales y Base --- */
+:root {
+    --bg-principal: #0a0a0f;
+    --bg-secundario: #12121f;
+    --neon-verde: #39ff14;
+    --neon-cian: #00f3ff;
+    --texto-brillante: #ffffff;
+    --texto-mutado: #8f93a2;
+    --fuente-tech: 'Fira Code', monospace;
+    --fuente-pixel: 'VT323', monospace;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-principal);
+    color: var(--texto-brillante);
+    font-family: var(--fuente-tech);
+    line-height: 1.6;
+}
+
+/* --- 2. Header y Hero --- */
+.main-header {
+    background-color: rgba(10, 10, 15, 0.95);
+    border-bottom: 2px solid #1a1a2e;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 5%;
+}
+
+.logo {
+    font-family: var(--fuente-pixel);
+    font-size: 2.2rem;
+    color: var(--neon-cian);
+}
+
+.logo span { color: var(--neon-verde); }
+
+.main-nav ul { display: flex; list-style: none; gap: 2rem; }
+.main-nav a { color: var(--texto-mutado); text-decoration: none; }
+
+.hero {
+    min-height: 50vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 5%;
+    background: radial-gradient(circle at center, #16162d 0%, var(--bg-principal) 70%);
+}
+
+.hero h1 { font-family: var(--fuente-pixel); font-size: 3rem; margin-bottom: 1rem; }
+.btn-neon {
+    display: inline-block;
+    padding: 10px 30px;
+    color: var(--neon-verde);
+    border: 2px solid var(--neon-verde);
+    text-decoration: none;
+    margin-top: 2rem;
+}
+
+/* --- 3. Catálogo (Pestañas y Tarjetas) --- */
+.catalog-section { padding: 5rem 5%; }
+.section-title { color: var(--neon-cian); margin-bottom: 3rem; font-family: var(--fuente-pixel); font-size: 2.5rem; }
+
+.tabs-container { display: flex; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap; }
+.tab-btn {
+    background: transparent; color: var(--texto-mutado); border: 1px solid #1a1a2e;
+    padding: 8px 20px; font-family: var(--fuente-tech); cursor: pointer; border-radius: 4px;
+}
+.tab-btn.active { color: var(--neon-cian); border-color: var(--neon-cian); }
+
+.grid-manuales {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.card-manual {
+    background-color: var(--bg-secundario);
+    border: 1px solid #1a1a2e;
+    border-left: 4px solid var(--texto-mutado);
+    padding: 2rem;
+}
+
+.manual-badge { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; margin-bottom: 1rem; }
+.manual-badge.gba { border: 1px solid #ff395c; color: #ff395c; }
+.manual-badge.nds { border: 1px solid var(--neon-cian); color: var(--neon-cian); }
+.manual-badge.switch { border: 1px solid var(--neon-verde); color: var(--neon-verde); }
+
+.link-download { color: var(--neon-verde); text-decoration: none; font-weight: bold; }
+
+/* --- 4. Formulario Contacto --- */
+.contact-section { padding: 5rem 5%; background-color: #0d0d16; border-top: 1px solid #1a1a2e; }
+.form-group { margin-bottom: 1.5rem; display: flex; flex-direction: column; }
+.form-group label { color: var(--neon-cian); margin-bottom: 0.5rem; }
+.form-group input, .form-group textarea, .form-group select {
+    background: #0a0a0f; border: 1px solid #1a1a2e; padding: 10px; color: white;
+}

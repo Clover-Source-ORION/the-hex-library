@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Hex Library | Manuales Técnicos & ROM Hacking</title>
+    <!-- Vinculamos los estilos -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Fuente Pixel/Tech de Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Encabezado / Navegación -->
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="#catalogo" class="active">Catálogo</a></li>
+                <li><a href="#asistente-ia">Asistente IA</a></li>
+                <li><a href="#contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Sección Principal (Hero) -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Documentación Tecnica del ROM Hacking</h1>
+            <p>Descubre el funcionamiento interno de tus juegos favoritos de Nintendo. Desde el análisis hexadecimal en sistemas de Game Boy Advance hasta las estructuras de memoria en Nintendo Switch. Manuales traducidos al español, desensamblados y explicados paso a paso.</p>
+            <a href="#catalogo" class="btn-neon">EXPLORAR REGISTROS</a>
+        </div>
+    </section>
+
+    <!-- Contenedor del Catálogo Avanzado con Filtros por Pestañas -->
+    <main id="catalogo" class="catalog-section">
+        <h2 class="section-title">&gt;_ REGISTROS_DE_MEMORIA</h2>
+        
+        <!-- Botones de las Pestañas (Controladores) -->
+        <div class="tabs-container">
+            <button class="tab-btn active" onclick="filtrarConsola('todas')">TODAS</button>
+            <button class="tab-btn" onclick="filtrarConsola('gba')">GBA</button>
+            <button class="tab-btn" onclick="filtrarConsola('nds-3ds')">NDS / 3DS</button>
+            <button class="tab-btn" onclick="filtrarConsola('switch')">SWITCH</button>
+        </div>
+        
+        <!-- Grid de los Manuales Técnicos -->
+        <div class="grid-manuales">
+            <!-- Manual 1: GBA -->
+            <div class="card-manual" data-consola="gba">
+                <div class="manual-badge gba">GBA</div>
+                <h3>Estructura de Bloques y Guardado</h3>
+                <p class="manual-desc">Análisis del mapeo de memoria RAM y compensación de bytes en juegos de la tercera generación (GBA). Ideal para comprender la persistencia de datos de guardado.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Traducido</span></div>
+                <a href="https://github.com" target="_blank" class="link-download">LEER_MANUAL_</a>
+            </div>
+
+            <!-- Manual 2: NDS/3DS (Basado en Smogon) -->
+            <div class="card-manual" data-consola="nds-3ds">
+                <div class="manual-badge nds">NDS</div>
+                <h3>Algoritmia de Generación PID e IVs</h3>
+                <p class="manual-desc">Traducción técnica detallada de la documentación analítica de Smogon. Explicación paso a paso de los bucles lógicos que definen los genes, naturalezas y aleatoriedad en la cuarta generación.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="https://www.smogon.com/ingame/rng/pid_iv_creation" target="_blank" class="link-download">LEER_MANUAL_</a>
+            </div>
+
+            <!-- Manual 3: Switch -->
+            <div class="card-manual" data-consola="switch">
+                <div class="manual-badge switch">SWITCH</div>
+                <h3>Estructuras Modernas y Parches de Memoria</h3>
+                <p class="manual-desc">Análisis del formato de archivos compuestos y parches ejecutados en tiempo de ejecución (LayeredFS) para la modificación de lógica interna en la octava y novena generación.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>En Traducción</span></div>
+                <a href="https://github.com" target="_blank" class="link-download">LEER_MANUAL_</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Sección del Formulario de Contacto Real -->
+    <section id="contacto" class="contact-section">
+        <h2 class="section-title">&gt;_ INTERCEPTAR_CANAL_DE_TEXTO</h2>
+        <p class="contact-subtitle">¿Encontraste un error hexadecimal en las traducciones o requieres documentación de un offset específico? Envía una solicitud al administrador.</p>
+        
+        <form class="contact-form" action="#" method="POST">
+            <div class="form-group">
+                <label for="name">ID_USUARIO (Nombre):</label>
+                <input type="text" id="name" name="name" placeholder="Ej. Clover_0x" required>
+            </div>
+            <div class="form-group">
+                <label for="email">CANAL_COMUNICACIÓN (Correo):</label>
+                <input type="email" id="email" name="email" placeholder="correo@ejemplo.com" required>
+            </div>
+            <div class="form-group">
+                <label for="topic">CATEGORÍA_REPORTE:</label>
+                <select id="topic" name="topic" required>
+                    <option value="" disabled selected>Selecciona un protocolo...</option>
+                    <option value="error">Error de traducción o fe de erratas</option>
+                    <option value="request">Solicitud de nuevo manual técnico</option>
+                    <option value="bug">Fallo lógico en el backend/asistente</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="message">DATA_PACKET (Mensaje):</label>
+                <textarea id="message" name="message" rows="5" placeholder="Escribe los detalles técnicos de tu solicitud o el offset afectado..." required></textarea>
+            </div>
+            <button type="submit" class="btn-neon">TRANSMITIR_PAQUETE</button>
+        </form>
+    </section>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <p>&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+    </footer>
+
+    <!-- Vinculación de Lógica Interactiva (Al final para asegurar la UX) -->
+    <script src="js/main.js"></script>
+</body>
+</html>
