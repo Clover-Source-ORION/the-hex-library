@@ -38,46 +38,11 @@
 
     <!-- Contenedor del Catálogo Avanzado con Filtros por Pestañas -->
     <main id="catalogo" class="catalog-section">
-        <h2 class="section-title">&gt;_ REGISTROS_DE_MEMORIA</h2>
-        
-        <!-- Botones de las Pestañas (Controladores) -->
-        <div class="tabs-container">
-            <button class="tab-btn active" onclick="filtrarConsola('todas')">TODAS</button>
-            <button class="tab-btn" onclick="filtrarConsola('gba')">GBA</button>
-            <button class="tab-btn" onclick="filtrarConsola('nds-3ds')">NDS / 3DS</button>
-            <button class="tab-btn" onclick="filtrarConsola('switch')">SWITCH</button>
-        </div>
-        
-        <!-- Grid de los Manuales Técnicos -->
-        <div class="grid-manuales" id="grid-manuales">
-            </div>
-
-            <!-- Manual 2: NDS/3DS (Basado en Smogon) -->
-            <div class="card-manual" data-consola="nds-3ds">
-                <div class="manual-badge nds">NDS</div>
-                <h3>Algoritmia de Generación PID e IVs</h3>
-                <p class="manual-desc">Traducción técnica detallada de la documentación analítica de Smogon. Explicación paso a paso de los bucles lógicos que definen los genes, naturalezas y aleatoriedad en la cuarta generación.</p>
-                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
-                <a href="https://www.smogon.com/ingame/rng/pid_iv_creation" target="_blank" class="link-download">LEER_MANUAL_</a>
-            </div>
-
-            <!-- Manual 3: Switch -->
-            <div class="card-manual" data-consola="switch">
-                <div class="manual-badge switch">SWITCH</div>
-                <h3>Estructuras Modernas y Parches de Memoria</h3>
-                <p class="manual-desc">Análisis del formato de archivos compuestos y parches ejecutados en tiempo de ejecución (LayeredFS) para la modificación de lógica interna en la octava y novena generación.</p>
-                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>En Traducción</span></div>
-                <a href="https://github.com" target="_blank" class="link-download">LEER_MANUAL_</a>
-            </div>
-        </div>
-    </main>
-
-    <!-- Sección del Formulario de Contacto Real -->
-    <section id="contacto" class="contact-section">
+        </main> <section id="contacto" class="contact-section">
         <h2 class="section-title">&gt;_ INTERCEPTAR_CANAL_DE_TEXTO</h2>
         <p class="contact-subtitle">¿Encontraste un error hexadecimal en las traducciones o requieres documentación de un offset específico? Envía una solicitud al administrador.</p>
         
-        <form class="contact-form" action="#" method="POST">
+        <form class="contact-form" id="contactForm">
             <div class="form-group">
                 <label for="name">ID_USUARIO (Nombre):</label>
                 <input type="text" id="name" name="name" placeholder="Ej. Clover_0x" required>
