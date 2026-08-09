@@ -1,0 +1,26 @@
+{
+  "name": "the-hex-library-backend",
+  "version": "1.0.0",
+  "description": "API REST de The Hex Library: canal de comentarios/reportes tecnicos con validacion, sanitizacion y persistencia.",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node tests/smoke.test.js",
+    "verificar": "node tests/verificar-version.js"
+  },
+  "keywords": [
+    "rom-hacking",
+    "api",
+    "express"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}

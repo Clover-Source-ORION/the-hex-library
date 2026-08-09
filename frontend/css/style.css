@@ -1,0 +1,354 @@
+/* Variables de color con estilo cibernético */
+:root {
+    --bg-principal: #0a0a0f;
+    --bg-secundario: #12121f;
+    --neon-verde: #39ff14;
+    --neon-cian: #00f3ff;
+    --texto-brillante: #ffffff;
+    --texto-mutado: #8f93a2;
+    --fuente-tech: 'Fira Code', monospace;
+    --fuente-pixel: 'VT323', monospace;
+}
+
+/* Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-principal);
+    color: var(--texto-brillante);
+    font-family: var(--fuente-tech);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Header estilizado */
+.main-header {
+    background-color: rgba(10, 10, 15, 0.95);
+    border-bottom: 2px solid #1a1a2e;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 5%;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.logo {
+    font-family: var(--fuente-pixel);
+    font-size: 2.2rem;
+    color: var(--neon-cian);
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px rgba(0, 243, 255, 0.5);
+}
+
+.logo span {
+    color: var(--neon-verde);
+    text-shadow: 0 0 8px rgba(57, 255, 20, 0.5);
+}
+
+.main-nav ul {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+.main-nav a {
+    color: var(--texto-mutado);
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: color 0.3s;
+}
+
+.main-nav a:hover, .main-nav a.active {
+    color: var(--neon-verde);
+    text-shadow: 0 0 5px rgba(57, 255, 20, 0.3);
+}
+
+/* Sección Hero */
+.hero {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem 5%;
+    background: radial-gradient(circle at center, #16162d 0%, var(--bg-principal) 70%);
+    border-bottom: 1px solid #1a1a2e;
+}
+
+.hero-content {
+    max-width: 800px;
+}
+
+.hero h1 {
+    font-family: var(--fuente-pixel);
+    font-size: 3.5rem;
+    color: var(--texto-brillante);
+    margin-bottom: 1.5rem;
+    letter-spacing: 3px;
+}
+
+.hero p {
+    color: var(--texto-mutado);
+    font-size: 1rem;
+    margin-bottom: 2.5rem;
+}
+
+/* Botón Neón Interactivo */
+.btn-neon {
+    display: inline-block;
+    padding: 10px 30px;
+    color: var(--neon-verde);
+    text-decoration: none;
+    border: 2px solid var(--neon-verde);
+    border-radius: 4px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    box-shadow: inset 0 0 8px rgba(57, 255, 20, 0.2), 0 0 8px rgba(57, 255, 20, 0.2);
+    transition: all 0.3s ease;
+}
+
+.btn-neon:hover {
+    color: var(--bg-principal);
+    background-color: var(--neon-verde);
+    box-shadow: 0 0 25px var(--neon-verde);
+}
+
+/* Sección del Catálogo */
+.catalog-section {
+    padding: 5rem 5%;
+}
+
+.section-title {
+    font-family: var(--fuente-pixel);
+    font-size: 2.5rem;
+    color: var(--neon-cian);
+    margin-bottom: 3rem;
+    text-shadow: 0 0 5px rgba(0, 243, 255, 0.3);
+}
+
+/* Grid del Catálogo Flexible (Responsive Automatizado) */
+.grid-consolas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1-fr));
+    gap: 2rem;
+}
+
+/* Tarjetas de consolas */
+.card-consola {
+    background-color: var(--bg-secundario);
+    border: 1px solid #1a1a2e;
+    padding: 2rem;
+    border-radius: 8px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.card-consola:hover {
+    transform: translateY(-5px);
+    border-color: var(--neon-cian);
+    box-shadow: 0 5px 15px rgba(0, 243, 255, 0.1);
+}
+
+.card-tag {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.75rem;
+    background-color: rgba(0, 243, 255, 0.1);
+    color: var(--neon-cian);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--neon-cian);
+}
+
+.card-consola h3 {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+.card-consola p {
+    color: var(--texto-mutado);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.card-link {
+    font-size: 0.85rem;
+    color: var(--neon-verde);
+}
+
+/* Footer simple */
+.main-footer {
+    text-align: center;
+    padding: 3rem;
+    font-size: 0.8rem;
+    color: #4a4a6a;
+    border-top: 1px solid #1a1a2e;
+}
+
+/* ==========================================================================
+   MEDIA QUERIES (Ajustes responsivos extras para pantallas pequeñas)
+   ========================================================================== */
+@media (max-width: 768px) {
+    .main-header {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .hero p {
+        font-size: 0.9rem;
+    }
+}
+/* --- Contenedor y Botones de Pestañas --- */
+.tabs-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    background: transparent;
+    color: var(--texto-mutado);
+    border: 1px solid #1a1a2e;
+    padding: 8px 20px;
+    font-family: var(--fuente-tech);
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+    border-radius: 4px;
+}
+
+.tab-btn:hover, .tab-btn.active {
+    color: var(--neon-cian);
+    border-color: var(--neon-cian);
+    background-color: rgba(0, 243, 255, 0.05);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+}
+
+/* --- Grid y Tarjetas de Manuales --- */
+.grid-manuales {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.card-manual {
+    background-color: var(--bg-secundario);
+    border: 1px solid #1a1a2e;
+    border-left: 4px solid var(--texto-mutado);
+    padding: 2rem;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.card-manual:hover {
+    border-left-color: var(--neon-verde);
+    box-shadow: 0 5px 15px rgba(57, 255, 20, 0.05);
+}
+
+.manual-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.manual-badge.gba { background: rgba(255, 57, 92, 0.1); color: #ff395c; border: 1px solid #ff395c; }
+.manual-badge.nds { background: rgba(0, 243, 255, 0.1); color: var(--neon-cian); border: 1px solid var(--neon-cian); }
+.manual-badge.switch { background: rgba(57, 255, 20, 0.1); color: var(--neon-verde); border: 1px solid var(--neon-verde); }
+
+.card-manual h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.8rem;
+}
+
+.manual-desc {
+    color: var(--texto-mutated);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    min-height: 70px;
+}
+
+.manual-meta {
+    font-size: 0.75rem;
+    color: #4a4a6a;
+    margin-bottom: 1rem;
+}
+
+.manual-meta span { color: var(--texto-brillante); }
+
+.link-download {
+    font-size: 0.85rem;
+    color: var(--neon-verde);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.link-download:hover { text-decoration: underline; }
+
+/* --- Sección del Formulario de Contacto --- */
+.contact-section {
+    padding: 5rem 5%;
+    background-color: #0d0d16;
+    border-top: 1px solid #1a1a2e;
+}
+
+.contact-subtitle {
+    color: var(--texto-mutado);
+    margin-bottom: 3rem;
+    max-width: 600px;
+}
+
+.contact-form {
+    max-width: 600px;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    color: var(--neon-cian);
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    background-color: var(--bg-principal);
+    border: 1px solid #1a1a2e;
+    padding: 12px;
+    color: var(--texto-brillante);
+    font-family: var(--fuente-tech);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--neon-verde);
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+}
+
+.contact-form .btn-neon {
+    background: transparent;
+    cursor: pointer;
+    margin-top: 1rem;
+}

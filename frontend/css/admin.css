@@ -1,0 +1,405 @@
+/* ==========================================================================
+   THE HEX LIBRARY - Capa de administracion
+   --------------------------------------------------------------------------
+   Archivo INDEPENDIENTE. style.css no se modifica en absoluto: aqui solo se
+   añaden clases nuevas con prefijo .adm-, y todas consumen las variables ya
+   definidas en :root (--neon-cian, --fuente-pixel, etc.) para que el panel
+   herede la estetica del sitio sin alterar ninguna regla existente.
+   ========================================================================== */
+
+/* --- Disparador discreto en el pie de pagina ------------------------------ */
+.adm-trigger {
+    background: none;
+    border: none;
+    padding: 6px 10px;
+    margin-top: 0.5rem;
+    font-family: var(--fuente-tech);
+    font-size: 0.75rem;
+    /* Mismo gris del pie que ya usa el diseño: discreto pero legible.
+       Antes era #2f2f47, casi indistinguible del fondo. */
+    color: #4a4a6a;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: color 0.3s, text-shadow 0.3s;
+
+    /* Blindaje de interaccion: garantiza que ninguna capa transparente ni un
+       apilado heredado dejen el boton fuera del alcance del puntero. */
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+}
+
+.adm-trigger:hover,
+.adm-trigger:focus-visible {
+    color: var(--neon-cian);
+    text-shadow: 0 0 6px rgba(0, 243, 255, 0.4);
+    outline: none;
+}
+
+/* --- Capa oscura compartida por el modal y el panel ----------------------- */
+.adm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 5, 10, 0.88);
+    backdrop-filter: blur(3px);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+/* Un overlay oculto no debe existir para el puntero bajo ninguna circunstancia.
+   El atributo hidden por si solo lo anula cualquier regla de display de autor,
+   por eso se declara explicitamente junto con pointer-events. */
+.adm-overlay[hidden] {
+    display: none !important;
+    pointer-events: none;
+}
+
+/* --- Modal de acceso ------------------------------------------------------ */
+.adm-modal {
+    background-color: var(--bg-secundario);
+    border: 1px solid var(--neon-cian);
+    border-radius: 6px;
+    box-shadow: 0 0 30px rgba(0, 243, 255, 0.15);
+    width: 100%;
+    max-width: 420px;
+    padding: 2rem;
+}
+
+.adm-modal h2 {
+    font-family: var(--fuente-pixel);
+    font-size: 1.9rem;
+    color: var(--neon-cian);
+    margin-bottom: 0.4rem;
+    letter-spacing: 2px;
+}
+
+.adm-modal .adm-hint {
+    color: var(--texto-mutado);
+    font-size: 0.8rem;
+    margin-bottom: 1.6rem;
+}
+
+/* --- Panel a pantalla completa -------------------------------------------- */
+.adm-panel {
+    background-color: var(--bg-principal);
+    border: 1px solid #1a1a2e;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 1100px;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.adm-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid #1a1a2e;
+    background-color: var(--bg-secundario);
+}
+
+.adm-panel-head h2 {
+    font-family: var(--fuente-pixel);
+    font-size: 1.8rem;
+    color: var(--neon-verde);
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px rgba(57, 255, 20, 0.35);
+}
+
+.adm-user {
+    font-size: 0.75rem;
+    color: var(--texto-mutado);
+}
+
+.adm-head-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+/* --- Pestañas del panel (mismo lenguaje visual que .tab-btn) -------------- */
+.adm-tabs {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem 0;
+    flex-wrap: wrap;
+}
+
+.adm-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+.adm-view[hidden] {
+    display: none;
+}
+
+/* --- Botones auxiliares --------------------------------------------------- */
+.adm-btn {
+    background: transparent;
+    border: 1px solid #1a1a2e;
+    color: var(--texto-mutado);
+    font-family: var(--fuente-tech);
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 7px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.adm-btn:hover:not(:disabled) {
+    color: var(--neon-cian);
+    border-color: var(--neon-cian);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+}
+
+.adm-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.adm-btn.peligro:hover:not(:disabled) {
+    color: #ff395c;
+    border-color: #ff395c;
+    box-shadow: 0 0 10px rgba(255, 57, 92, 0.25);
+}
+
+.adm-btn.exito:hover:not(:disabled) {
+    color: var(--neon-verde);
+    border-color: var(--neon-verde);
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.25);
+}
+
+/* --- Mensajes de estado --------------------------------------------------- */
+.adm-status {
+    font-size: 0.8rem;
+    margin-top: 1rem;
+    color: var(--texto-mutado);
+    white-space: pre-wrap;
+}
+
+.adm-status[data-estado="error"] {
+    color: #ff395c;
+}
+
+.adm-status[data-estado="exito"] {
+    color: var(--neon-verde);
+}
+
+.adm-status[hidden] {
+    display: none;
+}
+
+.adm-vacio {
+    color: var(--texto-mutado);
+    font-size: 0.9rem;
+    padding: 2rem 0;
+}
+
+/* --- Visor de transmisiones ----------------------------------------------- */
+.adm-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.adm-item {
+    background-color: var(--bg-secundario);
+    border: 1px solid #1a1a2e;
+    border-left: 4px solid var(--texto-mutado);
+    border-radius: 4px;
+    padding: 1.2rem;
+}
+
+.adm-item.t-error  { border-left-color: #ff395c; }
+.adm-item.t-request{ border-left-color: var(--neon-cian); }
+.adm-item.t-bug    { border-left-color: var(--neon-verde); }
+
+.adm-item-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.adm-item-head strong {
+    font-size: 1rem;
+    color: var(--texto-brillante);
+}
+
+.adm-item-meta {
+    font-size: 0.72rem;
+    color: #4a4a6a;
+}
+
+.adm-item-mail {
+    font-size: 0.78rem;
+    color: var(--neon-cian);
+    word-break: break-all;
+    margin-bottom: 0.6rem;
+}
+
+.adm-item-msg {
+    font-size: 0.88rem;
+    color: var(--texto-mutado);
+    white-space: pre-wrap;
+    margin-bottom: 0.9rem;
+}
+
+/* --- Monitor de consola --------------------------------------------------- */
+.adm-consola {
+    background-color: #05050a;
+    border: 1px solid #1a1a2e;
+    border-radius: 4px;
+    padding: 1rem;
+    height: 55vh;
+    overflow-y: auto;
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
+.adm-log {
+    display: flex;
+    gap: 0.7rem;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(26, 26, 46, 0.6);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.adm-log-hora {
+    color: #4a4a6a;
+    flex-shrink: 0;
+}
+
+.adm-log-nivel {
+    flex-shrink: 0;
+    font-weight: bold;
+    min-width: 58px;
+}
+
+.adm-log.n-log   .adm-log-nivel { color: var(--texto-mutado); }
+.adm-log.n-info  .adm-log-nivel { color: var(--neon-cian); }
+.adm-log.n-warn  .adm-log-nivel { color: #ffb800; }
+.adm-log.n-error .adm-log-nivel { color: #ff395c; }
+.adm-log.n-debug .adm-log-nivel { color: #7a5cff; }
+
+.adm-log.n-warn  .adm-log-texto { color: #ffb800; }
+.adm-log.n-error .adm-log-texto { color: #ff395c; }
+
+.adm-consola-barra {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.adm-check {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--texto-mutado);
+    cursor: pointer;
+}
+
+/* --- Editor de contenido -------------------------------------------------- */
+.adm-editor-aviso {
+    font-size: 0.78rem;
+    color: var(--texto-mutado);
+    border-left: 2px solid var(--neon-cian);
+    padding-left: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.adm-grupo {
+    margin-bottom: 2rem;
+}
+
+.adm-grupo h3 {
+    font-family: var(--fuente-pixel);
+    font-size: 1.4rem;
+    color: var(--neon-cian);
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+}
+
+.adm-campo {
+    margin-bottom: 1.1rem;
+}
+
+.adm-campo label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--texto-mutado);
+    margin-bottom: 0.35rem;
+}
+
+.adm-campo .adm-clave {
+    color: #4a4a6a;
+}
+
+.adm-campo input,
+.adm-campo textarea {
+    width: 100%;
+    background-color: var(--bg-principal);
+    border: 1px solid #1a1a2e;
+    padding: 10px;
+    color: var(--texto-brillante);
+    font-family: var(--fuente-tech);
+    font-size: 0.85rem;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+.adm-campo input:focus,
+.adm-campo textarea:focus {
+    outline: none;
+    border-color: var(--neon-verde);
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+}
+
+.adm-campo.modificado input,
+.adm-campo.modificado textarea {
+    border-color: var(--neon-cian);
+}
+
+.adm-barra-fija {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 1rem 0;
+    background: linear-gradient(to top, var(--bg-principal) 70%, transparent);
+}
+
+/* --- Responsive ----------------------------------------------------------- */
+@media (max-width: 768px) {
+    .adm-overlay { padding: 0; }
+
+    .adm-panel {
+        height: 100vh;
+        max-width: 100%;
+        border-radius: 0;
+    }
+
+    .adm-panel-head h2 { font-size: 1.4rem; }
+    .adm-body { padding: 1rem; }
+    .adm-consola { height: 45vh; }
+}
