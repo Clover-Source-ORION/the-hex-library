@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cabecera y sistema de archivos | The Hex Library</title>
+    <meta name="description" content="Cabecera del cartucho NDS, tablas FAT y FNT, overlays del ARM9 y flujo de desempaquetado y reempaquetado.">
+    <!-- Estilos globales de la plataforma: se cargan SIN modificar -->
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <!-- Estilos exclusivos de la vista de lectura (encapsulados) -->
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <!-- Ajustes de visualizacion en movil: archivo aditivo, solo @media -->
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+    <!-- Fuente Pixel/Tech de Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- Encabezado / Navegación -->
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- ==================================================================
+         VISTA DE LECTURA
+         Todo el marcado de aqui abajo cuelga de .reader-page/.reader-container
+         y se estiliza unicamente desde css/reader.css.
+         ================================================================== -->
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <!-- Encabezado tecnico del archivo -->
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>NDS/0x01_FILESYSTEM</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>NTR/TWL &middot; ARM9+ARM7</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.0 &nbsp;//&nbsp; lectura ~10 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag nds">NDS / 3DS</span>
+            <h1>Cabecera y sistema de archivos</h1>
+            <p class="reader-lead">La Nintendo DS abandona el modelo de ROM plana de la GBA e incorpora un sistema de archivos real con directorios y nombres. Este documento describe las tablas que lo sostienen y el flujo de trabajo que sustituye a la edicion hexadecimal directa.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Indice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#cambio">De la ROM plana al sistema de archivos</a></li>
+                        <li><a href="#cabecera">Campos utiles de la cabecera</a></li>
+                        <li><a href="#fat">La FAT: donde empieza y acaba cada archivo</a></li>
+                        <li><a href="#fnt">La FNT: la estructura de directorios</a></li>
+                        <li><a href="#overlays">Overlays</a></li>
+                        <li><a href="#flujo">Flujo de trabajo</a></li>
+                        <li><a href="#3ds">Que cambia en 3DS</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="cambio">1. De la ROM plana al sistema de archivos</h2>
+
+            <p>En Game Boy Advance los datos viven a pelo dentro de la ROM y se localizan persiguiendo punteros. La Nintendo DS abandona ese modelo: dentro del <code>.nds</code> hay un sistema de archivos real, con directorios, nombres y rutas. Cambia por completo el flujo de trabajo, y para mejor.</p>
+
+            <p>Ya no editas la imagen entera con un editor hexadecimal. La desempaquetas en una carpeta, trabajas sobre archivos sueltos con nombre propio y la vuelves a empaquetar. Los offsets siguen importando, pero dentro de cada archivo, no dentro de la ROM completa.</p>
+
+            <h2 id="cabecera">2. Campos utiles de la cabecera</h2>
+
+            <p>Los primeros 512 bytes describen el cartucho. Estos son los campos que se consultan de verdad al desempaquetar:</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Cabecera del cartucho NDS (extracto)</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Offset</th>
+                            <th scope="col">Tam.</th>
+                            <th scope="col">Campo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="addr">0x000</td><td class="num">12</td><td>Titulo interno en ASCII</td></tr>
+                        <tr><td class="addr">0x00C</td><td class="num">4</td><td>Codigo de juego, mismo esquema que en GBA</td></tr>
+                        <tr><td class="addr">0x010</td><td class="num">2</td><td>Codigo de fabricante</td></tr>
+                        <tr><td class="addr">0x020</td><td class="num">4</td><td>Offset del binario ARM9 en la ROM</td></tr>
+                        <tr><td class="addr">0x024</td><td class="num">4</td><td>Punto de entrada del ARM9</td></tr>
+                        <tr><td class="addr">0x028</td><td class="num">4</td><td>Direccion de carga del ARM9 en RAM</td></tr>
+                        <tr><td class="addr">0x02C</td><td class="num">4</td><td>Tamano del ARM9</td></tr>
+                        <tr><td class="addr">0x030</td><td class="num">4</td><td>Offset del binario ARM7</td></tr>
+                        <tr><td class="addr">0x03C</td><td class="num">4</td><td>Tamano del ARM7</td></tr>
+                        <tr><td class="addr">0x040</td><td class="num">4</td><td>Offset de la FNT (tabla de nombres)</td></tr>
+                        <tr><td class="addr">0x044</td><td class="num">4</td><td>Tamano de la FNT</td></tr>
+                        <tr><td class="addr">0x048</td><td class="num">4</td><td>Offset de la FAT (tabla de asignacion)</td></tr>
+                        <tr><td class="addr">0x04C</td><td class="num">4</td><td>Tamano de la FAT</td></tr>
+                        <tr><td class="addr">0x050</td><td class="num">4</td><td>Offset de la tabla de overlays del ARM9</td></tr>
+                        <tr><td class="addr">0x058</td><td class="num">4</td><td>Offset de la tabla de overlays del ARM7</td></tr>
+                        <tr><td class="addr">0x068</td><td class="num">4</td><td>Offset del banner (icono y titulos)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Los dos procesadores tienen roles muy distintos. El ARM9 lleva la logica del juego, los graficos y practicamente todo lo que vas a querer modificar. El ARM7 se ocupa del sonido, la pantalla tactil y la comunicacion inalambrica; salvo que trabajes en audio, no lo tocaras.</p>
+
+            <h2 id="fat">3. La FAT: donde empieza y acaba cada archivo</h2>
+
+            <p>La tabla de asignacion es un array plano de entradas de ocho bytes. La entrada numero N describe el archivo con ID N, sin mas indireccion:</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>entrada FAT</span><span>8 BYTES</span></div>
+                <pre><code>+-------------------+-------------------+
+| offset de inicio  | offset de fin     |
+|     u32 LE        |     u32 LE        |
++-------------------+-------------------+
+   0x00 - 0x03         0x04 - 0x07
+
+<span class="cmt">; El tamano no se guarda: se calcula</span>
+tamano = fin - inicio
+
+<span class="cmt">; Ambos offsets son absolutos dentro del .nds</span></code></pre>
+            </div>
+
+            <p>Que el tamano sea implicito tiene una consecuencia directa: si reemplazas un archivo por otro mas grande, no basta con sobrescribir sus bytes. Hay que reubicarlo y corregir su entrada, y por eso todas las herramientas de empaquetado reconstruyen la FAT entera en lugar de parchearla.</p>
+
+            <h2 id="fnt">4. La FNT: la estructura de directorios</h2>
+
+            <p>La tabla de nombres traduce rutas a IDs de archivo. Se divide en dos partes contiguas: primero un array de entradas de directorio de ocho bytes, despues el bloque de nombres.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Entrada de directorio de la FNT</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Offset</th>
+                            <th scope="col">Tipo</th>
+                            <th scope="col">Significado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr">0x00</td>
+                            <td>u32</td>
+                            <td>Offset al inicio de sus nombres, relativo al comienzo de la FNT</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">0x04</td>
+                            <td>u16</td>
+                            <td>ID del primer archivo contenido en el directorio</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">0x06</td>
+                            <td>u16</td>
+                            <td>ID del directorio padre. En la entrada 0, numero total de directorios</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>En el bloque de nombres, cada entrada empieza por un byte de longitud. Si el bit 7 esta a cero se trata de un archivo; si esta a uno, de un subdirectorio y tras el nombre vienen dos bytes con su ID. Un byte cero marca el final de las entradas de ese directorio.</p>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Por que importa</span>
+                <p>Los IDs de archivo dentro de un directorio son consecutivos. Si el primer archivo de <code>/data/graphics/</code> tiene el ID 240, el segundo es el 241 sin excepcion. Esa continuidad permite recorrer un directorio entero sin releer la tabla de nombres.</p>
+            </div>
+
+            <h2 id="overlays">5. Overlays</h2>
+
+            <p>El ARM9 no cabe entero en memoria, asi que buena parte del codigo se reparte en modulos que se cargan y descargan bajo demanda. Cada overlay se describe en la tabla de <code>0x050</code> con una entrada de 32 bytes que indica su ID, la direccion donde debe cargarse, su tamano, el tamano de la seccion BSS y el ID de archivo que contiene sus datos reales.</p>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">Trampa habitual</span>
+                <p>Los overlays comparten direcciones de RAM entre si. Dos modulos distintos pueden cargarse en el mismo sitio en momentos diferentes, asi que una direccion de memoria no identifica de forma unica una porcion de codigo. Al escribir un parche hay que decir tambien en que overlay cae, o acabaras parcheando el modulo equivocado.</p>
+            </div>
+
+            <h2 id="flujo">6. Flujo de trabajo</h2>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>terminal</span><span>SHELL</span></div>
+                <pre><code><span class="cmt"># 1. Desempaquetar la ROM en una carpeta de trabajo</span>
+ndstool -x juego.nds \
+        -9 arm9.bin -7 arm7.bin \
+        -y9 y9.bin  -y7 y7.bin \
+        -d data -y overlay \
+        -t banner.bin -h header.bin
+
+<span class="cmt"># 2. Editar lo que haga falta dentro de data/ y overlay/</span>
+
+<span class="cmt"># 3. Volver a empaquetar con los mismos parametros</span>
+ndstool -c juego_mod.nds \
+        -9 arm9.bin -7 arm7.bin \
+        -y9 y9.bin  -y7 y7.bin \
+        -d data -y overlay \
+        -t banner.bin -h header.bin</code></pre>
+            </div>
+
+            <details class="reader-details">
+                <summary>Lista de comprobacion antes de empaquetar</summary>
+                <div class="reader-details-body">
+                    <ul>
+                        <li>Conserva <code>header.bin</code> del desempaquetado original. Reconstruir la cabecera a mano es innecesario y arriesgado.</li>
+                        <li>No renombres archivos dentro de <code>data/</code>. Muchos juegos abren sus recursos por ID, no por nombre, pero las herramientas reconstruyen los IDs a partir del orden alfabetico del directorio.</li>
+                        <li>Tampoco anadas archivos nuevos sueltos por el mismo motivo: cambian los IDs de todos los posteriores.</li>
+                        <li>Si un archivo debe ir comprimido y lo dejas en claro, el juego intentara descomprimirlo igual y leera basura.</li>
+                        <li>Prueba siempre en emulador antes que en hardware. Un empaquetado incorrecto puede dejar la tarjeta flash en un estado incomodo de recuperar.</li>
+                    </ul>
+                </div>
+            </details>
+
+            <h2 id="3ds">7. Que cambia en 3DS</h2>
+
+            <p>La Nintendo 3DS mantiene la idea de sistema de archivos interno pero anade capas por encima. El contenedor ejecutable es un NCCH, dentro del cual conviven un ExeFS con el codigo y los metadatos, y un RomFS con los recursos del juego. El RomFS es el equivalente directo de la FNT y la FAT de DS, y es donde vas a pasar el tiempo.</p>
+
+            <p>Sobre esa estructura se apilan los formatos de distribucion: CIA para contenido instalable, CCI para volcados de tarjeta. Ambos son envoltorios; lo que hay dentro sigue siendo un NCCH con su RomFS. La diferencia practica frente a DS es que no necesitas reempaquetar la ROM entera para probar un cambio: el sistema permite superponer un RomFS externo, que es la tecnica descrita en la seccion de Switch de esta biblioteca.</p>
+
+            <footer class="reader-footer">
+                <h2 id="referencias">Referencias</h2>
+                <ul class="reader-sources">
+                    <li>GBATEK, secciones de DS Cartridge Header y DS Filesystem (Martin Korth).</li>
+                    <li>Documentacion de ndstool, proyecto devkitPro.</li>
+                    <li>3dbrew, wiki tecnica sobre NCCH, ExeFS y RomFS.</li>
+                </ul>
+
+                <nav class="reader-nav" aria-label="Navegacion entre documentos">
+                    <a href="gba-03-cabecera-de-cartucho.html">&lt;&lt; Cabecera del cartucho</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catalogo</a>
+                    <a href="nds-02-contenedores-narc-y-compresion.html">Contenedores NARC &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // NDS/0x01_FILESYSTEM // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+<!-- Footer -->
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+        <!-- Acceso discreto al panel (tambien con Ctrl + Shift + A) -->
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+
+    <!-- ==================================================================
+         CAPA DE ADMINISTRACION
+         Marcado inerte hasta que js/admin.js lo activa. Ocultarlo es solo
+         comodidad visual: la proteccion real es que /api/comentarios y
+         PUT /api/contenido devuelven 401 sin sesion valida en el servidor.
+         ================================================================== -->
+
+    <!-- Modal de acceso -->
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticacion requerida para el modulo de administracion.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Panel principal -->
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <!-- 1. Visor de Transmisiones (privado) -->
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmision(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <!-- 2. Monitor de Consola -->
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <!-- 3. Editor Frontend -->
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorias y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Vinculación de Lógica Interactiva (Al final para asegurar la UX) -->
+    <!-- consola.js va PRIMERO: intercepta console.* antes de que nadie lo use -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

@@ -34,13 +34,37 @@ const CAMPOS_EDITABLES = Object.freeze([
   { clave: 'manual.1.desc', grupo: 'Manual 1 (GBA)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
   { clave: 'manual.1.enlace', grupo: 'Manual 1 (GBA)', etiqueta: 'Texto del enlace', maxLen: 40 },
 
-  { clave: 'manual.2.titulo', grupo: 'Manual 2 (NDS)', etiqueta: 'Titulo', maxLen: 120 },
-  { clave: 'manual.2.desc', grupo: 'Manual 2 (NDS)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
-  { clave: 'manual.2.enlace', grupo: 'Manual 2 (NDS)', etiqueta: 'Texto del enlace', maxLen: 40 },
+  { clave: 'manual.2.titulo', grupo: 'Manual 2 (GBA)', etiqueta: 'Titulo', maxLen: 120 },
+  { clave: 'manual.2.desc', grupo: 'Manual 2 (GBA)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
+  { clave: 'manual.2.enlace', grupo: 'Manual 2 (GBA)', etiqueta: 'Texto del enlace', maxLen: 40 },
 
-  { clave: 'manual.3.titulo', grupo: 'Manual 3 (Switch)', etiqueta: 'Titulo', maxLen: 120 },
-  { clave: 'manual.3.desc', grupo: 'Manual 3 (Switch)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
-  { clave: 'manual.3.enlace', grupo: 'Manual 3 (Switch)', etiqueta: 'Texto del enlace', maxLen: 40 },
+  { clave: 'manual.3.titulo', grupo: 'Manual 3 (GBA)', etiqueta: 'Titulo', maxLen: 120 },
+  { clave: 'manual.3.desc', grupo: 'Manual 3 (GBA)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
+  { clave: 'manual.3.enlace', grupo: 'Manual 3 (GBA)', etiqueta: 'Texto del enlace', maxLen: 40 },
+
+  { clave: 'manual.4.titulo', grupo: 'Manual 4 (NDS/3DS)', etiqueta: 'Titulo', maxLen: 120 },
+  { clave: 'manual.4.desc', grupo: 'Manual 4 (NDS/3DS)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
+  { clave: 'manual.4.enlace', grupo: 'Manual 4 (NDS/3DS)', etiqueta: 'Texto del enlace', maxLen: 40 },
+
+  { clave: 'manual.5.titulo', grupo: 'Manual 5 (NDS/3DS)', etiqueta: 'Titulo', maxLen: 120 },
+  { clave: 'manual.5.desc', grupo: 'Manual 5 (NDS/3DS)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
+  { clave: 'manual.5.enlace', grupo: 'Manual 5 (NDS/3DS)', etiqueta: 'Texto del enlace', maxLen: 40 },
+
+  { clave: 'manual.6.titulo', grupo: 'Manual 6 (NDS/3DS)', etiqueta: 'Titulo', maxLen: 120 },
+  { clave: 'manual.6.desc', grupo: 'Manual 6 (NDS/3DS)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
+  { clave: 'manual.6.enlace', grupo: 'Manual 6 (NDS/3DS)', etiqueta: 'Texto del enlace', maxLen: 40 },
+
+  { clave: 'manual.7.titulo', grupo: 'Manual 7 (Switch)', etiqueta: 'Titulo', maxLen: 120 },
+  { clave: 'manual.7.desc', grupo: 'Manual 7 (Switch)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
+  { clave: 'manual.7.enlace', grupo: 'Manual 7 (Switch)', etiqueta: 'Texto del enlace', maxLen: 40 },
+
+  { clave: 'manual.8.titulo', grupo: 'Manual 8 (Switch)', etiqueta: 'Titulo', maxLen: 120 },
+  { clave: 'manual.8.desc', grupo: 'Manual 8 (Switch)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
+  { clave: 'manual.8.enlace', grupo: 'Manual 8 (Switch)', etiqueta: 'Texto del enlace', maxLen: 40 },
+
+  { clave: 'manual.9.titulo', grupo: 'Manual 9 (Switch)', etiqueta: 'Titulo', maxLen: 120 },
+  { clave: 'manual.9.desc', grupo: 'Manual 9 (Switch)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
+  { clave: 'manual.9.enlace', grupo: 'Manual 9 (Switch)', etiqueta: 'Texto del enlace', maxLen: 40 },
 
   { clave: 'contacto.titulo', grupo: 'Contacto', etiqueta: 'Titulo de seccion', maxLen: 80 },
   { clave: 'contacto.subtitulo', grupo: 'Contacto', etiqueta: 'Subtitulo', maxLen: 400, multilinea: true },

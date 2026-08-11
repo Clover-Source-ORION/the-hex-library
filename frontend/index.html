@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="css/style.css?v=3">
     <!-- Capa de administracion: archivo independiente, no altera style.css -->
     <link rel="stylesheet" href="css/admin.css?v=3">
+    <!-- Ajustes de visualizacion en movil: archivo aditivo, solo @media -->
+    <link rel="stylesheet" href="css/movil.css?v=1">
     <!-- Fuente Pixel/Tech de Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,32 +53,90 @@
         </div>
         
         <!-- Grid de los Manuales Técnicos -->
+        <!-- 9 fichas: 3 por consola. El atributo data-consola es el que lee
+             filtrarConsola() en js/main.js y debe coincidir con el data-filtro
+             del boton correspondiente: gba | nds-3ds | switch -->
         <div class="grid-manuales">
+
             <!-- Manual 1: GBA -->
             <div class="card-manual" data-consola="gba">
                 <div class="manual-badge gba">GBA</div>
-                <h3 data-editable="manual.1.titulo">Estructura de Bloques y Guardado</h3>
-                <p class="manual-desc" data-editable="manual.1.desc">Análisis del mapeo de memoria RAM y compensación de bytes en juegos de la tercera generación (GBA). Ideal para comprender la persistencia de datos de guardado.</p>
-                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Traducido</span></div>
-                <a href="https://github.com" target="_blank" class="link-download" data-editable="manual.1.enlace">LEER_MANUAL_</a>
+                <h3 data-editable="manual.1.titulo">Mapa de Memoria y Offsets</h3>
+                <p class="manual-desc" data-editable="manual.1.desc">Regiones del bus de 32 bits, conversión entre offset de archivo y puntero de ejecución, y cómo reconocer una tabla de punteros dentro de un volcado hexadecimal.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="lecturas/gba-01-mapa-de-memoria.html" class="link-download" data-editable="manual.1.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 2: NDS/3DS (Basado en Smogon) -->
+            <!-- Manual 2: GBA -->
+            <div class="card-manual" data-consola="gba">
+                <div class="manual-badge gba">GBA</div>
+                <h3 data-editable="manual.2.titulo">Paletas BGR555 y Tiles</h3>
+                <p class="manual-desc" data-editable="manual.2.desc">Formato de color de 16 bits, conversión de 8 a 5 bits por canal, reparto de la Palette RAM y codificación de tiles de 4 y 8 bits por píxel.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="lecturas/gba-02-paletas-y-graficos.html" class="link-download" data-editable="manual.2.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <!-- Manual 3: GBA -->
+            <div class="card-manual" data-consola="gba">
+                <div class="manual-badge gba">GBA</div>
+                <h3 data-editable="manual.3.titulo">Cabecera del Cartucho</h3>
+                <p class="manual-desc" data-editable="manual.3.desc">Los 192 primeros bytes de una ROM: campos, código de juego por región y cálculo del complemento de control que valida el BIOS al arrancar.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Traducido</span></div>
+                <a href="lecturas/gba-03-cabecera-de-cartucho.html" class="link-download" data-editable="manual.3.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <!-- Manual 4: NDS -->
             <div class="card-manual" data-consola="nds-3ds">
                 <div class="manual-badge nds">NDS</div>
-                <h3 data-editable="manual.2.titulo">Algoritmia de Generación PID e IVs</h3>
-                <p class="manual-desc" data-editable="manual.2.desc">Traducción técnica detallada de la documentación analítica de Smogon. Explicación paso a paso de los bucles lógicos que definen los genes, naturalezas y aleatoriedad en la cuarta generación.</p>
+                <h3 data-editable="manual.4.titulo">Cabecera y Sistema de Archivos</h3>
+                <p class="manual-desc" data-editable="manual.4.desc">Tablas FAT y FNT del cartucho, overlays del procesador ARM9 y el flujo completo de desempaquetado y reempaquetado que sustituye a la edición hexadecimal.</p>
                 <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
-                <a href="https://www.smogon.com/ingame/rng/pid_iv_creation" target="_blank" class="link-download" data-editable="manual.2.enlace">LEER_MANUAL_</a>
+                <a href="lecturas/nds-01-cabecera-y-sistema-de-archivos.html" class="link-download" data-editable="manual.4.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 3: Switch -->
+            <!-- Manual 5: NDS -->
+            <div class="card-manual" data-consola="nds-3ds">
+                <div class="manual-badge nds">NDS</div>
+                <h3 data-editable="manual.5.titulo">Contenedores NARC y Compresión</h3>
+                <p class="manual-desc" data-editable="manual.5.desc">Firmas invertidas del SDK Nitro, estructura interna de un contenedor NARC y los formatos de compresión LZ77, Huffman y RLE que envuelven casi todos los recursos.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="lecturas/nds-02-contenedores-narc-y-compresion.html" class="link-download" data-editable="manual.5.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <!-- Manual 6: NDS -->
+            <div class="card-manual" data-consola="nds-3ds">
+                <div class="manual-badge nds">NDS</div>
+                <h3 data-editable="manual.6.titulo">Gráficos Nitro y Texturas 3DS</h3>
+                <p class="manual-desc" data-editable="manual.6.desc">Los formatos NCLR, NCGR, NSCR y NCER que reparten una sola imagen en cuatro archivos, más las texturas BCLIM y BFLIM con entrelazado Morton en 3DS.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Traducido</span></div>
+                <a href="lecturas/nds-03-graficos-nitro.html" class="link-download" data-editable="manual.6.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <!-- Manual 7: SWITCH -->
             <div class="card-manual" data-consola="switch">
                 <div class="manual-badge switch">SWITCH</div>
-                <h3 data-editable="manual.3.titulo">Estructuras Modernas y Parches de Memoria</h3>
-                <p class="manual-desc" data-editable="manual.3.desc">Análisis del formato de archivos compuestos y parches ejecutados en tiempo de ejecución (LayeredFS) para la modificación de lógica interna en la octava y novena generación.</p>
+                <h3 data-editable="manual.7.titulo">Estructura de Capas de Archivos</h3>
+                <p class="manual-desc" data-editable="manual.7.desc">Superposición de RomFS: Title ID, jerarquía de carpetas, resolución de rutas al abrir un archivo y por qué dos modificaciones pueden entrar en conflicto.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="lecturas/switch-01-layeredfs.html" class="link-download" data-editable="manual.7.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <!-- Manual 8: SWITCH -->
+            <div class="card-manual" data-consola="switch">
+                <div class="manual-badge switch">SWITCH</div>
+                <h3 data-editable="manual.8.titulo">Archivos de Guardado</h3>
+                <p class="manual-desc" data-editable="manual.8.desc">Ciclo de extracción y restauración de partidas, estructura por bloques, comprobaciones de integridad y localización de un campo por comparación diferencial.</p>
                 <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>En Traducción</span></div>
-                <a href="https://github.com" target="_blank" class="link-download" data-editable="manual.3.enlace">LEER_MANUAL_</a>
+                <a href="lecturas/switch-02-archivos-de-guardado.html" class="link-download" data-editable="manual.8.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <!-- Manual 9: SWITCH -->
+            <div class="card-manual" data-consola="switch">
+                <div class="manual-badge switch">SWITCH</div>
+                <h3 data-editable="manual.9.titulo">Parches de Código IPS</h3>
+                <p class="manual-desc" data-editable="manual.9.desc">Parcheo de módulos ejecutables en memoria: Build ID, formato IPS e IPS32, conversión de direcciones virtuales a offsets y diferencias frente a los trucos de RAM.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>En Traducción</span></div>
+                <a href="lecturas/switch-03-parches-de-codigo.html" class="link-download" data-editable="manual.9.enlace">LEER_MANUAL_</a>
             </div>
         </div>
     </main>

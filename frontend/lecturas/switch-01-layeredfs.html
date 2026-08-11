@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estructura de capas de archivos | The Hex Library</title>
+    <meta name="description" content="Superposicion de RomFS en Nintendo Switch: Title ID, estructura de carpetas, resolucion de rutas y conflictos entre modificaciones.">
+    <!-- Estilos globales de la plataforma: se cargan SIN modificar -->
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <!-- Estilos exclusivos de la vista de lectura (encapsulados) -->
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <!-- Ajustes de visualizacion en movil: archivo aditivo, solo @media -->
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+    <!-- Fuente Pixel/Tech de Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- Encabezado / Navegación -->
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- ==================================================================
+         VISTA DE LECTURA
+         Todo el marcado de aqui abajo cuelga de .reader-page/.reader-container
+         y se estiliza unicamente desde css/reader.css.
+         ================================================================== -->
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <!-- Encabezado tecnico del archivo -->
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>NX/0x01_LAYEREDFS</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>NX &middot; Horizon OS</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.0 &nbsp;//&nbsp; lectura ~9 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag switch">SWITCH</span>
+            <h1>Estructura de capas de archivos</h1>
+            <p class="reader-lead">En Switch desaparece la necesidad de reempaquetar el juego para modificarlo. El sistema intercepta las lecturas de archivos y entrega una version externa cuando existe, lo que cambia por completo el flujo de trabajo respecto a GBA y DS.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Indice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#idea">Sustituir sin reescribir</a></li>
+                        <li><a href="#titleid">El Title ID</a></li>
+                        <li><a href="#estructura">Estructura de carpetas</a></li>
+                        <li><a href="#mecanismo">Que ocurre al abrir un archivo</a></li>
+                        <li><a href="#conflictos">Varias modificaciones a la vez</a></li>
+                        <li><a href="#rendimiento">Coste de rendimiento</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="idea">1. Sustituir sin reescribir</h2>
+
+            <p>Las tecnicas de GBA y DS comparten una premisa: para cambiar algo hay que modificar la imagen del juego y volver a empaquetarla. En Switch esa premisa desaparece. El sistema intercepta las lecturas de archivos y, si existe un archivo con la misma ruta en una carpeta externa, entrega ese en lugar del original.</p>
+
+            <p>El juego instalado nunca se toca. Sigue en su formato firmado, intacto, y lo que se distribuye es una carpeta con los archivos sustituidos. Las ventajas son inmediatas: un cambio de textura pesa lo que pesa la textura, se prueba reiniciando el juego, y desactivar una modificacion consiste en renombrar una carpeta.</p>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">La regla de la ruta exacta</span>
+                <p>La superposicion se decide comparando rutas. Si el juego abre <code>/Data/Model/player.bfres</code> y tu archivo esta en <code>/data/model/player.bfres</code>, no se sustituye nada. Mayusculas, guiones y extensiones deben coincidir caracter a caracter con lo que hay en el RomFS original.</p>
+            </div>
+
+            <h2 id="titleid">2. El Title ID</h2>
+
+            <p>Cada juego se identifica con un numero de 64 bits que se escribe como 16 digitos hexadecimales. Es la clave que enlaza tu carpeta de modificaciones con el juego correcto, y hay que tener presente que las actualizaciones y los contenidos descargables tienen identificadores derivados pero distintos del programa base.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Tipos de contenido y su identificador</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Contenido</th>
+                            <th scope="col">Relacion con el ID base</th>
+                            <th scope="col">Donde se modifica</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Programa base</td>
+                            <td class="meta">El ID tal cual, terminado en 000</td>
+                            <td class="meta">Carpeta del ID base</td>
+                        </tr>
+                        <tr>
+                            <td>Actualizacion</td>
+                            <td class="meta">Mismo ID con los ultimos digitos a 800</td>
+                            <td class="meta">Carpeta del ID base</td>
+                        </tr>
+                        <tr>
+                            <td>Contenido descargable</td>
+                            <td class="meta">ID con el bloque final incrementado</td>
+                            <td class="meta">Carpeta propia del DLC</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>La confusion habitual es esperar que una modificacion aplicada al programa base afecte a archivos que en realidad llegaron con una actualizacion. Cuando una actualizacion reemplaza un archivo, es su version la que el juego abre, y es esa ruta la que hay que superponer.</p>
+
+            <h2 id="estructura">3. Estructura de carpetas</h2>
+
+            <p>El diseno es deliberadamente literal: dentro de la carpeta del juego, una subcarpeta <code>romfs</code> que reproduce el arbol de recursos y una <code>exefs</code> para el codigo ejecutable.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>tarjeta SD</span><span>ARBOL</span></div>
+                <pre><code>sd:/
+ └── atmosphere/
+     └── contents/
+         └── <span class="key">0100ABCDEF123000</span>/      <span class="cmt">; Title ID del juego</span>
+             ├── <span class="off">romfs/</span>
+             │   ├── Data/
+             │   │   └── Model/
+             │   │       └── player.bfres
+             │   └── Message/
+             │       └── es.msbt
+             ├── <span class="off">exefs/</span>
+             │   └── main.npdm
+             └── <span class="off">cheats/</span>
+                 └── A1B2C3D4E5F60718.txt</code></pre>
+            </div>
+
+            <p>Solo hay que incluir los archivos que se sustituyen. No se copia el RomFS completo: la carpeta contiene exclusivamente las rutas modificadas, y todo lo demas se sirve del juego original.</p>
+
+            <h2 id="mecanismo">4. Que ocurre al abrir un archivo</h2>
+
+            <p>El proceso que intercepta las llamadas al sistema de archivos comprueba, para cada apertura, si existe una version superpuesta. La logica es de todo o nada por archivo:</p>
+
+            <ol>
+                <li>El juego solicita una ruta dentro de su RomFS.</li>
+                <li>La capa de interceptacion busca esa ruta bajo la carpeta del Title ID.</li>
+                <li>Si existe, devuelve el archivo externo. Si no, deja pasar la peticion al original.</li>
+            </ol>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">No hay mezcla parcial</span>
+                <p>La sustitucion opera sobre archivos completos, no sobre su contenido. Si un archivo empaquetado contiene cien texturas y quieres cambiar una, tienes que extraer el paquete, cambiar la textura, reconstruir el paquete entero y superponer el resultado. La capa de archivos no sabe nada de lo que hay dentro.</p>
+            </div>
+
+            <h2 id="conflictos">5. Varias modificaciones a la vez</h2>
+
+            <p>Aqui esta el limite real del sistema. Dos modificaciones que sustituyan archivos distintos conviven sin problema, pero dos que sustituyan el mismo archivo son incompatibles: solo una carpeta puede ganar, y la otra queda ignorada por completo.</p>
+
+            <p>El caso mas frecuente es el de los archivos de parametros globales, que suelen ser uno solo para todo el juego. Cualquier modificacion que ajuste valores de equilibrio tocara ese archivo, y por eso dos de ellas casi nunca se pueden combinar sin fusionarlas a mano.</p>
+
+            <details class="reader-details">
+                <summary>Diagnostico cuando una modificacion no se aplica</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><strong>Title ID.</strong> Verificalo contra el que informa el propio sistema, no contra una lista de internet. Un digito distinto y la carpeta se ignora en silencio.</li>
+                        <li><strong>Ruta interna.</strong> Extrae el RomFS original y compara la ruta completa, incluidas mayusculas. Es el fallo mas comun con diferencia.</li>
+                        <li><strong>Carpeta de mas.</strong> Un nivel extra al descomprimir el archivo distribuido deja la estructura desplazada. Debe haber una carpeta <code>romfs</code> directamente bajo el Title ID.</li>
+                        <li><strong>Actualizacion instalada.</strong> Si el archivo lo aporta una actualizacion, la ruta puede haber cambiado respecto al juego base.</li>
+                        <li><strong>Conflicto.</strong> Desactiva el resto de modificaciones y prueba la tuya sola.</li>
+                    </ol>
+                    <p>Si tras estos cinco pasos sigue sin funcionar, comprueba que el propio archivo es valido reemplazandolo temporalmente por una copia del original. Si asi tampoco arranca, el problema esta en la estructura de carpetas y no en el contenido.</p>
+                </div>
+            </details>
+
+            <h2 id="rendimiento">6. Coste de rendimiento</h2>
+
+            <p>Cada apertura de archivo pasa por una comprobacion adicional en la tarjeta SD, que es mucho mas lenta que la memoria interna. Con unos pocos archivos superpuestos el efecto es imperceptible, pero una modificacion que sustituya miles de rutas puede alargar visiblemente los tiempos de carga.</p>
+
+            <p>La contramedida es agrupar. Un unico archivo empaquetado grande se abre una vez; mil archivos sueltos se abren mil veces. Cuando una modificacion crece, reempaquetar los recursos en los contenedores originales del juego suele recuperar el rendimiento perdido.</p>
+
+            <footer class="reader-footer">
+                <h2 id="referencias">Referencias</h2>
+                <ul class="reader-sources">
+                    <li>Switchbrew, wiki tecnica sobre Horizon OS y sistema de archivos.</li>
+                    <li>Documentacion del proyecto Atmosphere sobre LayeredFS.</li>
+                </ul>
+
+                <nav class="reader-nav" aria-label="Navegacion entre documentos">
+                    <a href="nds-03-graficos-nitro.html">&lt;&lt; Graficos Nitro</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catalogo</a>
+                    <a href="switch-02-archivos-de-guardado.html">Archivos de guardado &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // NX/0x01_LAYEREDFS // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+<!-- Footer -->
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+        <!-- Acceso discreto al panel (tambien con Ctrl + Shift + A) -->
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+
+    <!-- ==================================================================
+         CAPA DE ADMINISTRACION
+         Marcado inerte hasta que js/admin.js lo activa. Ocultarlo es solo
+         comodidad visual: la proteccion real es que /api/comentarios y
+         PUT /api/contenido devuelven 401 sin sesion valida en el servidor.
+         ================================================================== -->
+
+    <!-- Modal de acceso -->
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticacion requerida para el modulo de administracion.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Panel principal -->
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <!-- 1. Visor de Transmisiones (privado) -->
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmision(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <!-- 2. Monitor de Consola -->
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <!-- 3. Editor Frontend -->
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorias y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Vinculación de Lógica Interactiva (Al final para asegurar la UX) -->
+    <!-- consola.js va PRIMERO: intercepta console.* antes de que nadie lo use -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

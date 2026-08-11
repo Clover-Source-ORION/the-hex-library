@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parches de codigo IPS | The Hex Library</title>
+    <meta name="description" content="Parcheo de modulos ejecutables en Switch: Build ID, formato IPS e IPS32, conversion de direcciones y diferencias frente a los trucos de memoria.">
+    <!-- Estilos globales de la plataforma: se cargan SIN modificar -->
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <!-- Estilos exclusivos de la vista de lectura (encapsulados) -->
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <!-- Ajustes de visualizacion en movil: archivo aditivo, solo @media -->
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+    <!-- Fuente Pixel/Tech de Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- Encabezado / Navegación -->
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- ==================================================================
+         VISTA DE LECTURA
+         Todo el marcado de aqui abajo cuelga de .reader-page/.reader-container
+         y se estiliza unicamente desde css/reader.css.
+         ================================================================== -->
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <!-- Encabezado tecnico del archivo -->
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>NX/0x03_IPS_PATCH</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>NX &middot; ARM64</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.0 &nbsp;//&nbsp; lectura ~11 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag switch">SWITCH</span>
+            <h1>Parches de codigo IPS</h1>
+            <p class="reader-lead">La superposicion de archivos resuelve los recursos, pero no el comportamiento. Cambiar la logica de un juego exige parchear su codigo en memoria, y este documento explica el formato empleado, como se calculan los offsets y por que el Build ID evita desastres.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Indice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#dos-capas">Recursos y codigo son cosas distintas</a></li>
+                        <li><a href="#buildid">El Build ID</a></li>
+                        <li><a href="#ips">El formato IPS</a></li>
+                        <li><a href="#offsets">Del desensamblado al offset del parche</a></li>
+                        <li><a href="#instrucciones">Sustituciones habituales en ARM64</a></li>
+                        <li><a href="#cheats">Trucos en tiempo real</a></li>
+                        <li><a href="#prudencia">Prudencia</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="dos-capas">1. Recursos y codigo son cosas distintas</h2>
+
+            <p>La superposicion de archivos resuelve todo lo que sea un recurso: texturas, textos, modelos, tablas de datos. Lo que no puede tocar es el comportamiento. Si quieres que una comprobacion deje de ejecutarse o que una constante interna valga otra cosa, hay que modificar el codigo del programa, y eso vive en otra capa.</p>
+
+            <p>El codigo se distribuye en modulos ejecutables que el sistema carga al arrancar el juego. Un parche de codigo es una lista de sustituciones de bytes que se aplican a ese modulo despues de cargarlo en memoria y antes de que empiece a ejecutarse. El archivo instalado no se altera nunca.</p>
+
+            <h2 id="buildid">2. El Build ID</h2>
+
+            <p>Cada compilacion de cada modulo lleva un identificador unico generado al compilar. Es la pieza que impide desastres: un parche escrito para una version del juego tiene un Build ID que no coincide con el de otra version, asi que sencillamente no se aplica.</p>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Por que esto es una buena noticia</span>
+                <p>Un parche de codigo escribe bytes en offsets fijos. Si se aplicara a una version distinta, esos offsets caerian en instrucciones diferentes y el resultado seria un cuelgue impredecible. Emparejar por Build ID convierte un fallo silencioso y peligroso en un parche que simplemente no hace nada.</p>
+            </div>
+
+            <p>De ahi la convencion de nombrar el archivo de parche con el Build ID del modulo al que va dirigido. El sistema recorre la carpeta de parches, compara el nombre con el identificador del modulo que acaba de cargar y aplica solo lo que coincide. Es tambien el motivo por el que un parche deja de funcionar tras actualizar el juego: la actualizacion recompila el modulo y cambia su identificador.</p>
+
+            <h2 id="ips">3. El formato IPS</h2>
+
+            <p>IPS es un formato de parcheo antiguo, anterior a todo esto, que se reutiliza aqui por su simplicidad. Un parche IPS es una secuencia de registros donde cada uno dice: en esta posicion, escribe estos bytes.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>formato IPS clasico</span><span>ESTRUCTURA</span></div>
+                <pre><code>+--------------------------------------------+
+| <span class="key">"PATCH"</span>   5 bytes ASCII                  |
++--------------------------------------------+
+| registro:                                  |
+|   offset    3 bytes  BIG-endian            |
+|   tamano    2 bytes  BIG-endian            |
+|   datos     N bytes                        |
++--------------------------------------------+
+| ... mas registros ...                      |
++--------------------------------------------+
+| <span class="key">"EOF"</span>     3 bytes ASCII                  |
++--------------------------------------------+</code></pre>
+            </div>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">Big-endian</span>
+                <p>Los offsets y tamanos de IPS van en big-endian, al reves que todo lo demas en estas plataformas. Un offset <code>0x001A40</code> se escribe <code>00 1A 40</code>, no <code>40 1A 00</code>. Es el error mas repetido al generar parches con un script propio.</p>
+            </div>
+
+            <p>La limitacion evidente del formato clasico es que tres bytes de offset solo alcanzan a direccionar 16 MiB, insuficiente para modulos modernos. Por eso circula una variante extendida con offsets de cuatro bytes, identificada por una firma distinta, que es la que se usa en la practica.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Variantes del formato</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Variante</th>
+                            <th scope="col">Firma</th>
+                            <th scope="col">Offset</th>
+                            <th scope="col">Alcance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>IPS clasico</td>
+                            <td class="addr">PATCH / EOF</td>
+                            <td class="num">3 bytes</td>
+                            <td class="meta">16 MiB</td>
+                        </tr>
+                        <tr>
+                            <td>IPS extendido</td>
+                            <td class="addr">IPS32 / EEOF</td>
+                            <td class="num">4 bytes</td>
+                            <td class="meta">4 GiB</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="offsets">4. Del desensamblado al offset del parche</h2>
+
+            <p>El desensamblador muestra direcciones de memoria virtual, no offsets dentro del archivo del modulo. Entre ambos hay una diferencia constante: la direccion base donde se carga el modulo, mas el desplazamiento de la seccion de codigo dentro de el.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>conversion</span><span>ARITMETICA</span></div>
+                <pre><code><span class="cmt">; Lo que ve el desensamblador</span>
+direccion virtual   = <span class="off">0x00812A40</span>
+
+<span class="cmt">; Base de carga del modulo en el analisis</span>
+base                = <span class="off">0x00800000</span>
+
+<span class="cmt">; Offset dentro del modulo</span>
+offset = direccion - base = <span class="off">0x00012A40</span>
+
+<span class="cmt">; Ese es el numero que va en el registro IPS</span></code></pre>
+            </div>
+
+            <p>Equivocarse en la base produce un parche que escribe en un sitio arbitrario. El sintoma es un cuelgue inmediato al arrancar, y la comprobacion es directa: lee los bytes originales en ese offset del modulo extraido y confirma que coinciden con la instruccion que pretendias sustituir. Si no coinciden, la base esta mal.</p>
+
+            <h2 id="instrucciones">5. Sustituciones habituales en ARM64</h2>
+
+            <p>La mayoria de los parches de codigo son cambios minusculos. Estas son las tres operaciones que cubren casi todos los casos:</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Patrones frecuentes</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Objetivo</th>
+                            <th scope="col">Tecnica</th>
+                            <th scope="col">Efecto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Anular una comprobacion</td>
+                            <td class="meta">Sustituir el salto condicional por <code>NOP</code></td>
+                            <td class="meta">La ejecucion continua siempre</td>
+                        </tr>
+                        <tr>
+                            <td>Forzar un valor de retorno</td>
+                            <td class="meta">Cargar la constante en el registro de retorno y volver</td>
+                            <td class="meta">La funcion devuelve siempre lo mismo</td>
+                        </tr>
+                        <tr>
+                            <td>Cambiar una constante</td>
+                            <td class="meta">Reescribir el inmediato de la instruccion</td>
+                            <td class="meta">Ajusta un limite o un multiplicador</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Las instrucciones ARM64 miden cuatro bytes exactos, lo que simplifica mucho el trabajo: toda sustitucion ocupa lo mismo que lo sustituido y no hay que reubicar nada. Recuerda que los bytes se escriben en little-endian, asi que una instruccion que el desensamblador muestra como <code>D503201F</code> aparece en el volcado como <code>1F 20 03 D5</code>.</p>
+
+            <h2 id="cheats">6. Trucos en tiempo real</h2>
+
+            <p>Existe una via alternativa que no toca el codigo sino la memoria mientras el juego corre. Un archivo de trucos declara escrituras periodicas sobre direcciones de RAM, condicionadas a que se pulse una combinacion de botones o a que un valor cumpla cierta condicion.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Parche de codigo frente a truco de memoria</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Aspecto</th>
+                            <th scope="col">Parche de codigo</th>
+                            <th scope="col">Truco de memoria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Momento</td>
+                            <td class="meta">Una vez, al cargar</td>
+                            <td class="meta">Continuamente, en ejecucion</td>
+                        </tr>
+                        <tr>
+                            <td>Alcance</td>
+                            <td class="meta">Cambia la logica</td>
+                            <td class="meta">Cambia valores</td>
+                        </tr>
+                        <tr>
+                            <td>Activacion</td>
+                            <td class="meta">Siempre activo</td>
+                            <td class="meta">Se puede alternar</td>
+                        </tr>
+                        <tr>
+                            <td>Coste</td>
+                            <td class="meta">Ninguno tras cargar</td>
+                            <td class="meta">Comprobaciones por fotograma</td>
+                        </tr>
+                        <tr>
+                            <td>Riesgo</td>
+                            <td class="meta">Cuelgue al arrancar si falla</td>
+                            <td class="meta">Corrupcion de partida si escribe mal</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <details class="reader-details">
+                <summary>Cual elegir para cada situacion</summary>
+                <div class="reader-details-body">
+                    <p>Si lo que quieres es alterar un valor que el jugador ve y que el juego recalcula constantemente, el truco de memoria es la herramienta adecuada: se activa y se desactiva, y no compromete el arranque.</p>
+                    <p>Si lo que quieres es que el juego se comporte de otra manera de forma permanente, el parche de codigo es la unica via. Un truco que escriba un valor sesenta veces por segundo no puede reemplazar a un cambio en la logica, y ademas compite con el propio juego por ese dato.</p>
+                    <p>El peor escenario es usar un truco para forzar un valor que despues se guarda en la partida. Ahi el efecto sobrevive al truco: has escrito en el archivo de guardado un estado que el juego no considera valido, y el problema aparecera mucho despues de haber desactivado el truco.</p>
+                    <p>Ambos comparten la dependencia de la version. Los trucos apuntan a direcciones de memoria que cambian entre compilaciones exactamente igual que los offsets de codigo, y por eso tambien se organizan por Build ID.</p>
+                </div>
+            </details>
+
+            <h2 id="prudencia">7. Prudencia</h2>
+
+            <p>Los parches de codigo se aplican antes de que el juego ejecute su primera instruccion, asi que un error no da segundas oportunidades: la consola se queda colgada y hay que reiniciarla. Trabaja con un parche cada vez, prueba tras cada cambio y anota que hace cada registro. Un archivo IPS de veinte registros sin documentar es imposible de depurar seis meses despues.</p>
+
+            <p>Y guarda siempre los bytes originales que sustituyes. Es lo que te permite verificar que apuntabas al sitio correcto y revertir un cambio concreto sin rehacer el parche entero.</p>
+
+            <footer class="reader-footer">
+                <h2 id="referencias">Referencias</h2>
+                <ul class="reader-sources">
+                    <li>Switchbrew, seccion sobre el formato NSO y los Build ID.</li>
+                    <li>Documentacion del proyecto Atmosphere sobre parches de ExeFS.</li>
+                    <li>ARM Architecture Reference Manual, ARMv8-A, ARM Limited.</li>
+                </ul>
+
+                <nav class="reader-nav" aria-label="Navegacion entre documentos">
+                    <a href="switch-02-archivos-de-guardado.html">&lt;&lt; Archivos de guardado</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catalogo</a>
+                    <a href="../index.html#catalogo">Volver al catalogo &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // NX/0x03_IPS_PATCH // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+<!-- Footer -->
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+        <!-- Acceso discreto al panel (tambien con Ctrl + Shift + A) -->
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+
+    <!-- ==================================================================
+         CAPA DE ADMINISTRACION
+         Marcado inerte hasta que js/admin.js lo activa. Ocultarlo es solo
+         comodidad visual: la proteccion real es que /api/comentarios y
+         PUT /api/contenido devuelven 401 sin sesion valida en el servidor.
+         ================================================================== -->
+
+    <!-- Modal de acceso -->
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticacion requerida para el modulo de administracion.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Panel principal -->
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <!-- 1. Visor de Transmisiones (privado) -->
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmision(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <!-- 2. Monitor de Consola -->
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <!-- 3. Editor Frontend -->
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorias y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Vinculación de Lógica Interactiva (Al final para asegurar la UX) -->
+    <!-- consola.js va PRIMERO: intercepta console.* antes de que nadie lo use -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>
