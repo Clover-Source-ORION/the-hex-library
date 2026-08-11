@@ -18,7 +18,6 @@ contacto.
 ```bash
 cd backend
 npm install
-cp .env.example .env      # opcional
 npm start
 ```
 
