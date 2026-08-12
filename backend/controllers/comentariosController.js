@@ -1,52 +1,92 @@
 'use strict';
 
-// Importa las utilidades y configuración de autenticación
-const auth = require('../config/auth');
+// Módulos de persistencia y modelo de datos
+const { comentarios } = require('../config/db');
+const Comentario = require('../models/Comentario');
 
-// Controlador para procesar el inicio de sesión del administrador
-function login(req, res, next) {
+// Procesa y guarda un nuevo comentario público
+async function crearComentario(req, res, next) {
   try {
-    // Sanitiza y valida las entradas recibidas en el cuerpo de la petición
-    const usuario = typeof req.body?.usuario === 'string' ? req.body.usuario.trim() : '';
-    const password = typeof req.body?.password === 'string' ? req.body.password : '';
-
-    if (!usuario || !password) {
-      return res.status(400).json({ ok: false, mensaje: 'Usuario y contrasena son obligatorios.' });
+    // Filtro honeypot para descartar spam de bots silenciosamente
+    if (typeof req.body?.website === 'string' && req.body.website.trim() !== '') {
+      return res.status(202).json({ ok: true, mensaje: 'Paquete recibido.' });
     }
 
-    // Verifica que el usuario y la contraseña coincidan con los datos esperados
-    if (!auth.verificarCredenciales(usuario, password)) {
-      return res.status(401).json({ ok: false, mensaje: 'Credenciales invalidas. Acceso denegado.' });
+    const comentario = Comentario.crear(req.body, { ip: req.ip });
+
+    // Control anti-duplicados para envíos idénticos en el último minuto
+    const haceUnMinuto = Date.now() - 60000;
+    const duplicados = await comentarios.countBy(
+      (registro) =>
+        registro.email === comentario.email &&
+        registro.message === comentario.message &&
+        new Date(registro.createdAt).getTime() > haceUnMinuto
+    );
+
+    if (duplicados > 0) {
+      return res.status(409).json({
+        ok: false,
+        mensaje: 'Ese paquete ya fue transmitido hace unos segundos.'
+      });
     }
 
-    // Genera el token y configura la cookie HTTP de la sesión
-    auth.ponerCookieSesion(res, auth.crearToken(usuario));
+    // Persistencia del registro y respuesta de éxito
+    await comentarios.insert(comentario);
+    console.log('[comentarios] Nueva transmision recibida (' + comentario.topic + ').');
 
-    return res.status(200).json({
+    return res.status(201).json({
       ok: true,
-      mensaje: 'Sesion iniciada.',
-      data: { usuario, expiraEn: auth.DURACION_MS }
+      mensaje: 'Paquete transmitido correctamente. El administrador lo revisara.'
     });
   } catch (error) {
     return next(error);
   }
 }
 
-// Controlador para cerrar la sesión activa del usuario
-function logout(req, res) {
-  auth.borrarCookieSesion(res);
-  return res.status(200).json({ ok: true, mensaje: 'Sesion cerrada.' });
+// Recupera la lista completa de comentarios para el área administrativa
+async function listarComentarios(req, res, next) {
+  try {
+    const limitCrudo = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(limitCrudo) ? Math.min(Math.max(limitCrudo, 1), 500) : 100;
+
+    const registros = await comentarios.readAll();
+
+    return res.status(200).json({
+      ok: true,
+      total: registros.length,
+      data: registros.slice(0, limit).map(Comentario.aPrivado)
+    });
+  } catch (error) {
+    return next(error);
+  }
 }
 
-// Controlador para verificar si la sesión sigue válida al recargar la interfaz
-function sesion(req, res) {
-  const activa = auth.sesionDe(req);
+// Elimina un comentario específico mediante su ID
+async function eliminarComentario(req, res, next) {
+  try {
+    const eliminado = await comentarios.remove(String(req.params.id));
 
-  return res.status(200).json({
-    ok: true,
-    data: activa ? { autenticado: true, usuario: activa.usuario, exp: activa.exp } : { autenticado: false }
-  });
+    if (!eliminado) {
+      return res.status(404).json({ ok: false, mensaje: 'Esa transmision no existe.' });
+    }
+
+    console.warn('[comentarios] Transmision ' + req.params.id + ' eliminada por ' + req.admin.usuario);
+    return res.status(200).json({ ok: true, mensaje: 'Transmision eliminada.' });
+  } catch (error) {
+    return next(error);
+  }
 }
 
-// Exportación de los controladores de autenticación
-module.exports = { login, logout, sesion };
+// Vacía por completo la colección de comentarios
+async function limpiarComentarios(req, res, next) {
+  try {
+    const borrados = await comentarios.clear();
+    console.warn('[comentarios] Registro purgado (' + borrados + ') por ' + req.admin.usuario);
+    return res.status(200).json({ ok: true, mensaje: 'Registro purgado.', data: { borrados } });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+// Exportación de los controladores
+module.exports = { crearComentario, listarComentarios, eliminarComentario, limpiarComentarios };
