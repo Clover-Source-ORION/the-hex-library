@@ -55,6 +55,7 @@ the-hex-library/
 │   │   ├── comentariosController.js
 │   │   ├── authController.js
 │   │   └── contenidoController.js
+│   ├── data/                              Generado en ejecución (ignorado por git)
 │   ├── middlewares/
 │   │   ├── errorHandler.js                Errores, 404 y cabeceras de seguridad
 │   │   ├── rateLimit.js                   Límite por IP con ventana deslizante
@@ -66,8 +67,9 @@ the-hex-library/
 │   │   ├── comentarios.routes.js
 │   │   ├── admin.routes.js
 │   │   └── contenido.routes.js
-│   ├── tests/smoke.test.js
-│   ├── data/                              Generado en ejecución (ignorado por git)
+│   ├── tests/
+│   │   ├── smoke.test.js
+│   │   └── verificar-version.js
 │   ├── .env.example
 │   ├── package.json
 │   └── server.js
@@ -79,6 +81,16 @@ the-hex-library/
     │   ├── consola.js                     Interceptor de console.* (carga 1º)
     │   ├── main.js                         Interfaz pública
     │   └── admin.js                        Panel / Modo Developer
+    ├── lecturas/
+    │   ├── gba-01-mapa-de-memoria.html
+    │   ├── gba-02-paletas-y-graficos.html
+    │   ├── gba-03-cabecera-de-cartucho.html
+    │   ├── nds-01-cabecera-y-sistema-de-archivos.html
+    │   ├── nds-02-contenedores-narc-y-compresion.html
+    │   ├── nds-03-graficos-nitro.html
+    │   ├── switch-01-layeredfs.html
+    │   ├── switch-02-archivos-de-guardado.html
+    │   └── switch-03-parches-de-codigo.html
     └── index.html
 ```
 

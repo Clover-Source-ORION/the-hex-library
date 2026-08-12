@@ -3,23 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contenedores NARC y compresion | The Hex Library</title>
-    <meta name="description" content="Estructura de los contenedores NARC, firmas invertidas del SDK Nitro y formatos de compresion LZ77, Huffman y RLE.">
-    <!-- Estilos globales de la plataforma: se cargan SIN modificar -->
+    <title>Contenedores NARC y compresión | The Hex Library</title>
+    <meta name="description" content="Estructura de los contenedores NARC, firmas invertidas del SDK Nitro y formatos de compresión LZ77, Huffman y RLE.">
+    <!-- Hojas de estilo globales, de lectura y responsive -->
     <link rel="stylesheet" href="../css/style.css?v=3">
     <link rel="stylesheet" href="../css/admin.css?v=3">
-    <!-- Estilos exclusivos de la vista de lectura (encapsulados) -->
     <link rel="stylesheet" href="../css/reader.css?v=1">
-    <!-- Ajustes de visualizacion en movil: archivo aditivo, solo @media -->
     <link rel="stylesheet" href="../css/movil.css?v=1">
-    <!-- Fuente Pixel/Tech de Google Fonts -->
+    <!-- Fuentes tipográficas externas -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<!-- Encabezado / Navegación -->
+    <!-- Encabezado principal y navegación -->
     <header class="main-header">
         <div class="logo">
             <span>The Hex</span> Library
@@ -33,15 +31,11 @@
         </nav>
     </header>
 
-    <!-- ==================================================================
-         VISTA DE LECTURA
-         Todo el marcado de aqui abajo cuelga de .reader-page/.reader-container
-         y se estiliza unicamente desde css/reader.css.
-         ================================================================== -->
+    <!-- Contenedor principal de la vista de lectura -->
     <main class="reader-page">
         <article class="reader-container">
 
-            <!-- Encabezado tecnico del archivo -->
+            <!-- Ficha de metadatos técnicos del archivo -->
             <header class="reader-filecard">
                 <dl>
                     <dt>File_ID</dt>
@@ -58,18 +52,19 @@
             </header>
 
             <span class="reader-tag nds">NDS / 3DS</span>
-            <h1>Contenedores NARC y compresion</h1>
-            <p class="reader-lead">Desempaquetar una ROM de DS rara vez deja recursos utilizables a la primera: lo habitual es encontrar contenedores dentro de contenedores, comprimidos. Este documento explica como identificarlos, abrirlos y volver a cerrarlos sin romper las tablas.</p>
+            <h1>Contenedores NARC y compresión</h1>
+            <p class="reader-lead">Desempaquetar una ROM de Nintendo DS rara vez deja recursos utilizables a la primera: lo habitual es encontrar contenedores anidados y comprimidos. Este documento explica cómo identificarlos, extraerlos y reinsertarlos sin corromper las tablas de punteros.</p>
 
+            <!-- Menú desplegable con el índice de contenidos -->
             <details class="reader-details reader-toc" open>
-                <summary>Indice del documento</summary>
+                <summary>Índice del documento</summary>
                 <div class="reader-details-body">
                     <ol>
                         <li><a href="#muneca">Archivos dentro de archivos</a></li>
                         <li><a href="#magias">Identificar el formato por su firma</a></li>
                         <li><a href="#narc">Estructura de un NARC</a></li>
-                        <li><a href="#compresion">Formatos de compresion del SDK</a></li>
-                        <li><a href="#lz77">Como funciona LZ77 variante 10</a></li>
+                        <li><a href="#compresion">Formatos de compresión del SDK</a></li>
+                        <li><a href="#lz77">Cómo funciona LZ77 variante 10</a></li>
                         <li><a href="#reinsercion">Reinsertar un archivo modificado</a></li>
                     </ol>
                 </div>
@@ -77,17 +72,18 @@
 
             <h2 id="muneca">1. Archivos dentro de archivos</h2>
 
-            <p>Desempaquetar un <code>.nds</code> rara vez deja recursos utilizables a la primera. Lo normal es encontrarse con unos cientos de archivos que a su vez contienen decenas de archivos cada uno, y que ademas estan comprimidos. Un sprite concreto puede estar tres niveles por debajo de la superficie.</p>
+            <p>Desempaquetar un archivo <code>.nds</code> no expone los gráficos o textos directamente. Lo habitual es obtener cientos de archivos genéricos que funcionan a su vez como contenedores de decenas de subarchivos, frecuentemente bajo compresión. Un <em>sprite</em> específico puede estar empaquetado tres niveles por debajo de la superficie del sistema de archivos.</p>
 
-            <p>Ese anidamiento no es capricho. La DS lee de la tarjeta con un coste de acceso alto, asi que agrupar recursos relacionados en un solo contenedor reduce el numero de lecturas. Para quien edita, la consecuencia es que hay que aprender a reconocer el envoltorio antes de intentar abrir el contenido.</p>
+            <p>Este anidamiento responde a razones técnicas: la consola lee de la tarjeta con un coste de acceso elevado, por lo que **agrupar recursos relacionados en un único contenedor reduce los ciclos de búsqueda**. Para el desarrollador o traductor, esto implica aprender a reconocer el envoltorio antes de procesar su contenido.</p>
 
             <h2 id="magias">2. Identificar el formato por su firma</h2>
 
-            <p>Los formatos del SDK de Nintendo se identifican por los cuatro primeros bytes. El detalle que confunde al principio es que las firmas aparecen invertidas en el volcado, porque se escriben como un entero de 32 bits en little-endian:</p>
+            <p>Los formatos oficiales del <strong>Nitro SDK</strong> de Nintendo se identifican por los primeros 4 bytes de su cabecera (<em>magic bytes</em>). Un detalle clave es que **las firmas aparecen invertidas en el volcado hexadecimal**, ya que están codificadas como un entero de 32 bits en formato <em>little-endian</em>:</p>
 
+            <!-- Tabla de firmas mágicas Nitro SDK -->
             <div class="reader-table-wrap">
                 <table class="reader-table">
-                    <caption>Firmas mas frecuentes</caption>
+                    <caption>Firmas más frecuentes en Nintendo DS</caption>
                     <thead>
                         <tr>
                             <th scope="col">Bytes en disco</th>
@@ -96,149 +92,154 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td class="addr">NARC</td><td>NARC</td><td class="meta">Archivo contenedor generico</td></tr>
-                        <tr><td class="addr">RLCN</td><td>NCLR</td><td class="meta">Paleta de colores</td></tr>
-                        <tr><td class="addr">RGCN</td><td>NCGR</td><td class="meta">Tiles graficos</td></tr>
-                        <tr><td class="addr">RCSN</td><td>NSCR</td><td class="meta">Mapa de pantalla de fondo</td></tr>
-                        <tr><td class="addr">RECN</td><td>NCER</td><td class="meta">Definicion de celdas de sprite</td></tr>
-                        <tr><td class="addr">RNAN</td><td>NANR</td><td class="meta">Animacion de celdas</td></tr>
-                        <tr><td class="addr">BMD0</td><td>NSBMD</td><td class="meta">Modelo tridimensional</td></tr>
+                        <tr><td class="addr"><code>NARC</code></td><td><code>NARC</code></td><td class="meta">Archivo contenedor genérico de recursos</td></tr>
+                        <tr><td class="addr"><code>RLCN</code></td><td><code>NCLR</code></td><td class="meta">Paleta de colores (Nitro Color)</td></tr>
+                        <tr><td class="addr"><code>RGCN</code></td><td><code>NCGR</code></td><td class="meta">Tiles gráficos (Nitro Character Graphic)</td></tr>
+                        <tr><td class="addr"><code>RCSN</code></td><td><code>NSCR</code></td><td class="meta">Mapa de pantalla / fondo (Nitro Screen)</td></tr>
+                        <tr><td class="addr"><code>RECN</code></td><td><code>NCER</code></td><td class="meta">Definición de celdas de sprite (Nitro Cell)</td></tr>
+                        <tr><td class="addr"><code>RNAN</code></td><td><code>NANR</code></td><td class="meta">Animación de celdas (Nitro Animation)</td></tr>
+                        <tr><td class="addr"><code>BMD0</code></td><td><code>NSBMD</code></td><td class="meta">Modelo tridimensional (Nitro System Basic Model 3D)</td></tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="reader-callout dato">
-                <span class="reader-callout-title">Atajo</span>
-                <p>Si al abrir un archivo lees los cuatro caracteres al reves y obtienes algo pronunciable, has acertado con el formato. <code>RLCN</code> leido de derecha a izquierda es <code>NCLR</code>: una paleta.</p>
+                <span class="reader-callout-title">Atajo de identificación</span>
+                <p>Si al inspeccionar la cabecera en un editor hexadecimal lees los cuatro caracteres en orden inverso y forman una sigla coherente, has identificado el formato. Por ejemplo, <code>RLCN</code> leído de derecha a izquierda resulta en <code>NCLR</code> (Nitro Color Resource).</p>
             </div>
 
             <h2 id="narc">3. Estructura de un NARC</h2>
 
-            <p>Un NARC es, en esencia, un sistema de archivos NDS en miniatura metido dentro de un archivo. Tras una cabecera de 16 bytes vienen tres secciones obligatorias, siempre en el mismo orden:</p>
+            <p>Un contenedor <strong>NARC</strong> es un sistema de archivos en miniatura. Tras su cabecera principal de 16 bytes, contiene **tres secciones obligatorias** dispuestas secuencialmente:</p>
 
+            <!-- Esquema de la estructura interna del contenedor NARC -->
             <div class="reader-code">
-                <div class="reader-code-bar"><span>estructura NARC</span><span>MAPA</span></div>
+                <div class="reader-code-bar"><span>estructura NARC</span><span>MAPA DE MEMORIA</span></div>
                 <pre><code>+------------------------------------------+
-| <span class="key">NARC</span>  cabecera 16 B                      |
+| <span class="key">NARC</span>  cabecera principal (16 bytes)      |
 |   0x00  firma        "NARC"              |
 |   0x04  BOM          0xFFFE              |
-|   0x08  version                          |
-|   0x0C  tamano total del archivo         |
-|   0x0E  tamano de cabecera  = 0x10       |
-|   0x10  numero de secciones = 3          |
+|   0x08  versión                          |
+|   0x0C  tamaño total del archivo         |
+|   0x0E  tamaño de cabecera  = 0x10       |
+|   0x10  número de secciones = 3          |
 +------------------------------------------+
-| <span class="key">BTAF</span>  tabla de asignacion              |
-|   numero de archivos + N entradas de 8 B |
+| <span class="key">BTAF</span>  tabla de asignación (FAT interna)  |
+|   número de archivos + N entradas de 8 B |
 |   cada entrada: inicio u32, fin u32      |
 |   OFFSETS RELATIVOS AL INICIO DE GMIF    |
 +------------------------------------------+
-| <span class="key">BTNF</span>  tabla de nombres                 |
-|   normalmente vacia: solo indices        |
+| <span class="key">BTNF</span>  tabla de nombres (FNT interna)   |
+|   normalmente vacía: solo índices        |
 +------------------------------------------+
-| <span class="key">GMIF</span>  datos                            |
-|   los archivos, uno detras de otro       |
+| <span class="key">GMIF</span>  sección de datos                   |
+|   los subarchivos expuestos secuencialmente|
 +------------------------------------------+</code></pre>
             </div>
 
-            <p>La diferencia decisiva frente a la FAT de la ROM es que aqui los offsets son <strong>relativos al inicio de la seccion de datos</strong>, no absolutos. Sumar el offset del NARC dentro de la ROM y esperar que cuadre es el error mas comun al escribir un extractor propio.</p>
+            <p>A diferencia de la FAT general de la ROM, los offsets de la sección <code>BTAF</code> son **relativos al inicio de la sección de datos (<code>GMIF</code>)**, no absolutos. Calcularlos con respecto al origen de la ROM es el error más común al desarrollar herramientas de extracción.</p>
 
-            <p>La tabla de nombres casi siempre esta vacia. Los juegos acceden a sus recursos por indice numerico, asi que el archivo 12 de un NARC es sencillamente el archivo 12: no tiene nombre y no hay forma de deducir para que sirve salvo abriendolo.</p>
+            <p>La sección <code>BTNF</code> (nombres de directorio) suele omitir cadenas de texto. El ejecutable del juego accede a los subarchivos por su índice numérico: el recurso 12 de un NARC se identifica exclusivamente por su ID <code>12</code>.</p>
 
-            <h2 id="compresion">4. Formatos de compresion del SDK</h2>
+            <h2 id="compresion">4. Formatos de compresión del SDK</h2>
 
-            <p>Casi todo lo que hay dentro de un NARC llega comprimido. La cabecera es la misma para todos los metodos: un byte de tipo seguido de tres bytes con el tamano descomprimido en little-endian.</p>
+            <p>La mayoría de subarchivos dentro de un NARC utilizan compresión por software. Todos los métodos del SDK comparten una **cabecera estandarizada de 4 bytes**:</p>
 
+            <!-- Formato de la cabecera de compresión -->
             <div class="reader-code">
-                <div class="reader-code-bar"><span>cabecera de compresion</span><span>4 BYTES</span></div>
+                <div class="reader-code-bar"><span>cabecera de compresión</span><span>4 BYTES</span></div>
                 <pre><code>+------+---------------------------+
-| tipo |  tamano descomprimido u24 |
+| tipo |  tamaño descomprimido u24 |
 +------+---------------------------+
   0x00        0x01 - 0x03
 
-<span class="cmt">; Ejemplo: 10 00 4A 00</span>
+<span class="cmt">// Ejemplo de lectura: 10 00 4A 00</span>
 tipo   = <span class="off">0x10</span>       -> LZ77 variante 10
-tamano = <span class="off">0x004A00</span>   -> 18944 bytes al descomprimir</code></pre>
+tamaño = <span class="off">0x004A00</span>   -> 18,944 bytes tras descomprimir</code></pre>
             </div>
 
+            <!-- Algoritmos de compresión mapeados por tipo -->
             <div class="reader-table-wrap">
                 <table class="reader-table">
-                    <caption>Byte de tipo</caption>
+                    <caption>Algoritmos según el byte de tipo</caption>
                     <thead>
                         <tr>
                             <th scope="col">Valor</th>
-                            <th scope="col">Metodo</th>
-                            <th scope="col">Uso tipico</th>
+                            <th scope="col">Método</th>
+                            <th scope="col">Uso típico</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td class="addr">0x10</td><td>LZ77 variante 10</td><td class="meta">Graficos y datos en general</td></tr>
-                        <tr><td class="addr">0x11</td><td>LZ77 variante 11</td><td class="meta">Bloques grandes, mejor ratio</td></tr>
-                        <tr><td class="addr">0x24</td><td>Huffman de 4 bits</td><td class="meta">Datos con alfabeto reducido</td></tr>
-                        <tr><td class="addr">0x28</td><td>Huffman de 8 bits</td><td class="meta">Texto</td></tr>
-                        <tr><td class="addr">0x30</td><td>RLE</td><td class="meta">Mapas con zonas uniformes</td></tr>
+                        <tr><td class="addr"><code>0x10</code></td><td>LZ77 variante 10</td><td class="meta">Gráficos y datos estructurales</td></tr>
+                        <tr><td class="addr"><code>0x11</code></td><td>LZ77 variante 11</td><td class="meta">Bloques extensos (mayor ratio de compresión)</td></tr>
+                        <tr><td class="addr"><code>0x24</code></td><td>Huffman de 4 bits</td><td class="meta">Datos de paleta o tablas de bajo rango</td></tr>
+                        <tr><td class="addr"><code>0x28</code></td><td>Huffman de 8 bits</td><td class="meta">Cadenas de texto y diálogos</td></tr>
+                        <tr><td class="addr"><code>0x30</code></td><td>RLE (Run-Length Encoding)</td><td class="meta">Mapas de tiles con secuencias repetitivas</td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <h2 id="lz77">5. Como funciona LZ77 variante 10</h2>
+            <h2 id="lz77">5. Cómo funciona LZ77 variante 10</h2>
 
-            <p>El flujo se organiza en bloques de nueve elementos: un byte de banderas y hasta ocho unidades. Cada bit del byte de banderas, leido de mas significativo a menos, dice si la unidad correspondiente es un literal o una referencia hacia atras.</p>
+            <p>El flujo comprimido se estructura en **bloques de 9 elementos**: un byte de banderas (<em>flags</em>) seguido de hasta 8 unidades de datos. Cada bit del byte de banderas, procesado del bit más significativo (MSB) al menos significativo (LSB), indica si la unidad es un byte literal o una referencia hacia atrás:</p>
 
+            <!-- Algoritmo de descompresión LZ10 en C -->
             <div class="reader-code">
-                <div class="reader-code-bar"><span>lz10.txt</span><span>ALGORITMO</span></div>
-                <pre><code>bandera = 0  -> copia 1 byte literal a la salida
+                <div class="reader-code-bar"><span>lz10_algorithm.c</span><span>ALGORITMO</span></div>
+                <pre><code>bandera = 0  -> copia 1 byte literal al buffer de salida
 
-bandera = 1  -> referencia de 2 bytes, big-endian
+bandera = 1  -> referencia de 2 bytes (big-endian)
                 +--------+--------+
                 | LLLLDDDD DDDDDDDD|
                 +--------+--------+
-                L = longitud - 3   (3 a 18 bytes)
-                D = distancia - 1  (1 a 4096 atras)
+                L = longitud - 3   (rango: 3 a 18 bytes)
+                D = distancia - 1  (rango: 1 a 4096 bytes atrás)
 
-<span class="cmt">; Copia byte a byte, nunca en bloque:</span>
-<span class="cmt">; una referencia puede solaparse consigo misma</span>
+<span class="cmt">// La copia debe ejecutarse byte a byte secuencialmente:</span>
+<span class="cmt">// una referencia puede solaparse con la posición actual</span>
 for (i = 0; i &lt; longitud; i++)
     salida[pos + i] = salida[pos - distancia - 1 + i];</code></pre>
             </div>
 
             <div class="reader-callout aviso">
-                <span class="reader-callout-title">El solapamiento no es un error</span>
-                <p>Una referencia con distancia 1 y longitud 18 es perfectamente valida: repite el ultimo byte dieciocho veces. Si implementas la copia con <code>memcpy</code> obtendras basura en cuanto aparezca una zona uniforme. La copia tiene que ser byte a byte, en orden ascendente y leyendo del buffer de salida que estas escribiendo.</p>
+                <span class="reader-callout-title">El solapamiento de bytes es intencional</span>
+                <p>Una referencia con distancia 1 y longitud 18 es totalmente válida: repite el byte anterior 18 veces. Utilizar funciones de copia en bloque como <code>memcpy</code> provocará corrupción de datos cuando ocurra un solapamiento. La lectura debe ser estrictamente byte a byte en orden ascendente sobre el buffer de salida dinámico.</p>
             </div>
 
             <h2 id="reinsercion">6. Reinsertar un archivo modificado</h2>
 
-            <p>Al recomprimir, tu implementacion casi nunca producira exactamente el mismo numero de bytes que la original. Eso obliga a reconstruir la tabla BTAF entera, porque cada entrada posterior se desplaza.</p>
+            <p>Al modificar un recurso y recomprimirlo, el tamaño resultante rara vez coincidirá con el original. Esto requiere **reconstruir la sección <code>BTAF</code> completa** para reajustar los punteros de los archivos posteriores:</p>
 
             <ol>
-                <li>Recomprime el archivo modificado, o dejalo sin comprimir si el juego lo admite.</li>
-                <li>Recalcula el inicio y el fin de esa entrada en la BTAF.</li>
-                <li>Desplaza todas las entradas posteriores por la diferencia de tamano.</li>
-                <li>Actualiza el tamano total en la cabecera del NARC y el de la seccion GMIF.</li>
-                <li>Reinserta el NARC en la ROM y deja que la herramienta de empaquetado reconstruya la FAT.</li>
+                <li>Recomprime el subarchivo modificado, o déjalo sin comprimir si el motor del juego soporta la lectura en claro.</li>
+                <li>Recalcula los valores de inicio y fin de esa entrada en la sección <code>BTAF</code>.</li>
+                <li>Desplaza los offsets de todas las entradas posteriores sumando o restando la diferencia de tamaño.</li>
+                <li>Actualiza el tamaño total en la cabecera principal del NARC y en la cabecera de la sección <code>GMIF</code>.</li>
+                <li>Reinserta el NARC en la ROM y recompila con herramientas como <code>ndstool</code> para actualizar la FAT global.</li>
             </ol>
 
             <details class="reader-details">
-                <summary>Cuando conviene no comprimir</summary>
+                <summary>Cuándo conviene omitir la compresión</summary>
                 <div class="reader-details-body">
-                    <p>La mayoria de los juegos descomprimen leyendo el byte de tipo, asi que un archivo sin cabecera de compresion se procesa tal cual. Si el tuyo entra por esa via, dejarlo en claro simplifica mucho las iteraciones: editas, insertas y pruebas sin pasar por el compresor.</p>
-                    <p>El coste es el espacio. Un archivo sin comprimir puede ocupar el triple, y en una ROM ajustada eso desplaza todo lo demas. Es una tecnica excelente durante el desarrollo y mala idea en la version final.</p>
-                    <p>La excepcion son los recursos que el juego carga con un tamano fijo reservado de antemano. Ahi el archivo descomprimido debe caber en el buffer previsto, y si no cabe el juego escribe fuera de su memoria. Estos casos se detectan porque el fallo aparece minutos despues, en una parte del juego aparentemente sin relacion.</p>
+                    <p>La mayoría de rutinas de descompresión del BIOS leen el byte de tipo en la cabecera. Si no detectan un valor como <code>0x10</code>, el motor procesa el archivo directamente. Omitir la compresión agiliza las pruebas durante la fase de desarrollo.</p>
+                    <p>El inconveniente principal es el espacio: un recurso sin comprimir puede triplicar su tamaño, desplazando los datos subsiguientes. En ROMs con espacio ajustado, esto exige recomprimir antes de generar la versión final.</p>
+                    <p><strong>Excepción de seguridad:</strong> Si un recurso se carga en un buffer de RAM con tamaño fijo prediseñado, incluir el archivo descomprimido provocará un desbordamiento de memoria (<em>buffer overflow</em>). Estos fallos suelen manifestarse como cuelgues del sistema minutos después en rutinas no relacionadas.</p>
                 </div>
             </details>
 
+            <!-- Pie del artículo con referencias y enlaces -->
             <footer class="reader-footer">
                 <h2 id="referencias">Referencias</h2>
                 <ul class="reader-sources">
-                    <li>GBATEK, seccion BIOS Decompression Functions (Martin Korth).</li>
-                    <li>Especificacion comunitaria del formato NARC, proyecto Tinke.</li>
-                    <li>kiwi.ds y documentacion de formatos del Nitro SDK.</li>
+                    <li>GBATEK, sección BIOS Decompression Functions (Martin Korth).</li>
+                    <li>Especificación comunitaria del formato NARC, proyecto Tinke.</li>
+                    <li>kiwi.ds y documentación técnica de formatos del Nitro SDK.</li>
                 </ul>
 
-                <nav class="reader-nav" aria-label="Navegacion entre documentos">
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
                     <a href="nds-01-cabecera-y-sistema-de-archivos.html">&lt;&lt; Sistema de archivos NDS</a>
-                    <a href="../index.html#catalogo" class="volver">Volver al catalogo</a>
-                    <a href="nds-03-graficos-nitro.html">Graficos Nitro &gt;&gt;</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="nds-03-graficos-nitro.html">Gráficos Nitro &gt;&gt;</a>
                 </nav>
 
                 <p class="reader-firma">EOF // NDS/0x02_NARC_LZ77 // THE HEX LIBRARY </p>
@@ -247,26 +248,17 @@ for (i = 0; i &lt; longitud; i++)
         </article>
     </main>
 
-<!-- Footer -->
+    <!-- Pie de página general -->
     <footer class="main-footer">
         <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
-        <!-- Acceso discreto al panel (tambien con Ctrl + Shift + A) -->
         <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
     </footer>
 
-
-    <!-- ==================================================================
-         CAPA DE ADMINISTRACION
-         Marcado inerte hasta que js/admin.js lo activa. Ocultarlo es solo
-         comodidad visual: la proteccion real es que /api/comentarios y
-         PUT /api/contenido devuelven 401 sin sesion valida en el servidor.
-         ================================================================== -->
-
-    <!-- Modal de acceso -->
+    <!-- Modal de autenticación de administrador -->
     <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
         <div class="adm-modal">
             <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
-            <p class="adm-hint">Autenticacion requerida para el modulo de administracion.</p>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
 
             <form id="adm-login-form" class="contact-form" novalidate>
                 <div class="form-group">
@@ -288,7 +280,7 @@ for (i = 0; i &lt; longitud; i++)
         </div>
     </div>
 
-    <!-- Panel principal -->
+    <!-- Panel interactivo de administración -->
     <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
         <div class="adm-panel">
 
@@ -303,6 +295,7 @@ for (i = 0; i &lt; longitud; i++)
                 </div>
             </div>
 
+            <!-- Navegación por pestañas dentro del panel -->
             <div class="adm-tabs" role="tablist">
                 <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
                 <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
@@ -311,10 +304,10 @@ for (i = 0; i &lt; longitud; i++)
 
             <div class="adm-body">
 
-                <!-- 1. Visor de Transmisiones (privado) -->
+                <!-- Visor de transmisiones -->
                 <section class="adm-view" data-vista="transmisiones" role="tabpanel">
                     <div class="adm-consola-barra">
-                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmision(es) en registro</span>
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
                         <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
                         <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
                     </div>
@@ -322,7 +315,7 @@ for (i = 0; i &lt; longitud; i++)
                     <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
                 </section>
 
-                <!-- 2. Monitor de Consola -->
+                <!-- Monitor de consola -->
                 <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
                     <div class="adm-consola-barra">
                         <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
@@ -334,11 +327,11 @@ for (i = 0; i &lt; longitud; i++)
                     <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
                 </section>
 
-                <!-- 3. Editor Frontend -->
+                <!-- Editor de contenidos frontend -->
                 <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
                     <p class="adm-editor-aviso">
                         Solo se editan textos descriptivos. Los campos del formulario, sus
-                        atributos name/id, los valores de las categorias y los identificadores
+                        atributos name/id, los valores de las categorías y los identificadores
                         internos quedan fuera del alcance del editor: el servidor rechaza
                         cualquier clave ajena a la lista blanca.
                     </p>
@@ -354,8 +347,7 @@ for (i = 0; i &lt; longitud; i++)
         </div>
     </div>
 
-    <!-- Vinculación de Lógica Interactiva (Al final para asegurar la UX) -->
-    <!-- consola.js va PRIMERO: intercepta console.* antes de que nadie lo use -->
+    <!-- Scripts de la plataforma -->
     <script src="../js/consola.js?v=3"></script>
     <script src="../js/main.js?v=3"></script>
     <script src="../js/admin.js?v=3"></script>
