@@ -1,16 +1,11 @@
 'use strict';
 
-/**
- * Rate limit por IP con ventana deslizante, sin dependencias externas.
- * Suficiente para un despliegue de una sola instancia; para multi-instancia
- * habria que mover el contador a Redis conservando esta misma firma.
- */
-
+// Middleware de limitación de tasa de peticiones (rate limiting) por IP
 function rateLimit({ ventanaMs = 60_000, maxPeticiones = 30 } = {}) {
-  /** @type {Map<string, number[]>} */
+  // Almacena el historial de marcas de tiempo por IP
   const registros = new Map();
 
-  // Limpieza periodica para que el Map no crezca sin control.
+  // Purga registros antiguos periódicamente para liberar memoria
   const limpieza = setInterval(() => {
     const corte = Date.now() - ventanaMs;
     for (const [clave, marcas] of registros) {
@@ -20,16 +15,19 @@ function rateLimit({ ventanaMs = 60_000, maxPeticiones = 30 } = {}) {
     }
   }, ventanaMs);
 
-  // No mantener vivo el proceso solo por este temporizador.
+  // Evita bloquear la finalización del proceso por el temporizador
   if (typeof limpieza.unref === 'function') limpieza.unref();
 
   return function middleware(req, res, next) {
+    // Obtiene la IP del cliente y la ventana de tiempo
     const clave = req.ip || req.socket?.remoteAddress || 'desconocido';
     const ahora = Date.now();
     const corte = ahora - ventanaMs;
 
+    // Filtra las peticiones realizadas dentro de la ventana de tiempo actual
     const marcas = (registros.get(clave) || []).filter((t) => t > corte);
 
+    // Si supera el límite permitido, retorna HTTP 429 indicando el tiempo de espera
     if (marcas.length >= maxPeticiones) {
       const esperaSeg = Math.ceil((marcas[0] + ventanaMs - ahora) / 1000);
       res.set('Retry-After', String(esperaSeg));
@@ -39,10 +37,12 @@ function rateLimit({ ventanaMs = 60_000, maxPeticiones = 30 } = {}) {
       });
     }
 
+    // Registra la marca de tiempo actual y permite continuar la petición
     marcas.push(ahora);
     registros.set(clave, marcas);
     return next();
   };
 }
 
+// Exportación de la función middleware
 module.exports = { rateLimit };

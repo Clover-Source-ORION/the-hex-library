@@ -1,24 +1,6 @@
 'use strict';
 
-/**
- * Modelo de "contenido editable" del Modo Developer.
- *
- * RESTRICCION CENTRAL DEL EDITOR
- * ------------------------------
- * El editor solo puede sobrescribir el TEXTO VISIBLE de un conjunto cerrado de
- * elementos. Esta lista blanca es la frontera dura: aunque alguien manipule el
- * navegador y envie claves arbitrarias, el servidor descarta todo lo que no
- * este aqui declarado.
- *
- * Por diseño NO existen claves para:
- *  - atributos name / id / for / value de los campos del formulario,
- *  - valores de <option> (la lista blanca de `topic` del backend depende de ellos),
- *  - atributos data-filtro o data-consola (de los que depende el filtro),
- *  - rutas href, endpoints o identificadores internos.
- *
- * El editor escribe unicamente textContent; nunca atributos ni HTML.
- */
-
+// Lista blanca con las definiciones y límites de cada campo editable
 const CAMPOS_EDITABLES = Object.freeze([
   { clave: 'nav.catalogo', grupo: 'Navegacion', etiqueta: 'Enlace 1', maxLen: 40 },
   { clave: 'nav.asistente', grupo: 'Navegacion', etiqueta: 'Enlace 2', maxLen: 40 },
@@ -78,9 +60,10 @@ const CAMPOS_EDITABLES = Object.freeze([
   { clave: 'footer.texto', grupo: 'Pie de pagina', etiqueta: 'Texto', maxLen: 300, multilinea: true }
 ]);
 
-/** Indice clave -> definicion, para validar en O(1). */
+// Mapa de acceso rápido para validar claves en tiempo constante
 const INDICE = new Map(CAMPOS_EDITABLES.map((campo) => [campo.clave, campo]));
 
+// Error personalizado para fallos de validación en la edición
 class ValidationError extends Error {
   constructor(errores) {
     super('El contenido enviado no supero la validacion.');
@@ -90,10 +73,7 @@ class ValidationError extends Error {
   }
 }
 
-/**
- * Sanitiza un texto de interfaz: fuerza string, normaliza, elimina etiquetas
- * HTML y caracteres de control, y recorta a la longitud del campo.
- */
+// Sanitiza textos borrando etiquetas HTML, controles y limitando la longitud
 function sanitizarTexto(valor, maxLen) {
   if (typeof valor !== 'string') return null;
 
@@ -109,15 +89,7 @@ function sanitizarTexto(valor, maxLen) {
     .slice(0, maxLen);
 }
 
-/**
- * Valida un lote de overrides contra la lista blanca.
- * Una clave con cadena vacia significa "restaurar el texto original del HTML":
- * se elimina del documento en vez de guardarse vacia.
- *
- * @param {object} payload objeto { clave: texto }
- * @returns {object} overrides limpios y persistibles
- * @throws {ValidationError}
- */
+// Valida y filtra el objeto recibido contra la lista blanca de campos
 function normalizar(payload) {
   if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new ValidationError({ _global: 'El cuerpo debe ser un objeto de pares clave/texto.' });
@@ -129,8 +101,6 @@ function normalizar(payload) {
   Object.keys(payload).forEach((clave) => {
     const definicion = INDICE.get(clave);
 
-    // Clave fuera de la lista blanca: se rechaza explicitamente en vez de
-    // ignorarla en silencio, para que el editor avise si alguien la manipulo.
     if (!definicion) {
       errores[clave] = 'Clave no editable.';
       return;
@@ -151,7 +121,7 @@ function normalizar(payload) {
   return limpio;
 }
 
-/** Esquema que consume el editor del panel para construir su formulario. */
+// Retorna la estructura usada por la interfaz para armar el formulario del editor
 function esquema() {
   return CAMPOS_EDITABLES.map((campo) => ({
     clave: campo.clave,
@@ -162,4 +132,5 @@ function esquema() {
   }));
 }
 
+// Exportación del modelo y utilidades
 module.exports = { CAMPOS_EDITABLES, esquema, normalizar, sanitizarTexto, ValidationError };

@@ -1,62 +1,36 @@
 'use strict';
 
-/**
- * Autenticacion de administrador.
- *
- * Decisiones de diseño:
- *  - La contrasena NUNCA se guarda ni se compara en claro: se deriva con scrypt
- *    al arrancar y se compara con timingSafeEqual (resistente a ataques de tiempo).
- *  - La sesion es un token firmado con HMAC-SHA256 (formato payload.firma). El
- *    servidor no guarda estado, pero un token manipulado no supera la firma.
- *  - El token viaja en una cookie httpOnly: el JavaScript de la pagina no puede
- *    leerlo, asi un XSS no puede robar la sesion.
- *  - SameSite=Strict evita que un sitio de terceros dispare peticiones con la
- *    cookie adjunta (CSRF).
- *
- * Las credenciales se leen de variables de entorno; los valores por defecto
- * son los del enunciado para que el proyecto funcione recien clonado.
- */
-
+// Módulo de autenticación y gestión de sesiones del administrador
 const crypto = require('crypto');
 
+// Credenciales por defecto o leídas del entorno
 const USUARIO = process.env.ADMIN_USER || 'Admin_Clover';
 const PASSWORD = process.env.ADMIN_PASSWORD || 'Hex-Library';
 
-/** Duracion de la sesion: 8 horas. */
+// Configuración de expiración (8 horas por defecto) y nombre de la cookie
 const DURACION_MS = Number(process.env.SESSION_TTL_MS) || 8 * 60 * 60 * 1000;
-
 const NOMBRE_COOKIE = 'hex_session';
 
-/**
- * Secreto de firma. Si no se define en el entorno se genera uno aleatorio por
- * arranque: seguro, pero invalida las sesiones al reiniciar. En produccion hay
- * que fijar SESSION_SECRET.
- */
+// Clave secreta para firmar tokens
 const SECRETO = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
 if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
   console.warn('[auth] SESSION_SECRET no definido. Las sesiones se invalidaran al reiniciar.');
 }
 
-// --- Derivacion de la contrasena -------------------------------------------
-
+// Derivación segura de la contraseña mediante scrypt
 const SAL = crypto.createHash('sha256').update(USUARIO).digest();
 const HASH_ESPERADO = crypto.scryptSync(PASSWORD, SAL, 32);
 
-/** Comparacion en tiempo constante de dos buffers. */
+// Compara dos buffers en tiempo constante para evitar ataques de tiempo
 function igualSeguro(a, b) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-/**
- * Verifica usuario + contrasena.
- * @returns {boolean}
- */
+// Valida las credenciales ingresadas comparando usuario y hash de contraseña
 function verificarCredenciales(usuario, password) {
   if (typeof usuario !== 'string' || typeof password !== 'string') return false;
 
-  // Se evalua SIEMPRE el hash aunque el usuario no coincida, para que el tiempo
-  // de respuesta no revele si el nombre de usuario existe.
   const hashRecibido = crypto.scryptSync(password, SAL, 32);
   const passwordOk = igualSeguro(hashRecibido, HASH_ESPERADO);
 
@@ -68,13 +42,12 @@ function verificarCredenciales(usuario, password) {
   return usuarioOk && passwordOk;
 }
 
-// --- Token de sesion --------------------------------------------------------
-
+// Genera la firma HMAC-SHA256 para un String de datos
 function firmar(datos) {
   return crypto.createHmac('sha256', SECRETO).update(datos).digest('base64url');
 }
 
-/** Genera un token firmado con el usuario y su fecha de expiracion. */
+// Genera un token firmado con el usuario y tiempo de expiración
 function crearToken(usuario) {
   const payload = Buffer.from(
     JSON.stringify({ u: usuario, exp: Date.now() + DURACION_MS })
@@ -83,10 +56,7 @@ function crearToken(usuario) {
   return payload + '.' + firmar(payload);
 }
 
-/**
- * Valida firma y expiracion.
- * @returns {{usuario: string, exp: number}|null}
- */
+// Verifica la estructura, firma y vigencia del token recibido
 function verificarToken(token) {
   if (typeof token !== 'string' || !token.includes('.')) return null;
 
@@ -105,9 +75,7 @@ function verificarToken(token) {
   }
 }
 
-// --- Cookies ----------------------------------------------------------------
-
-/** Parser minimo de la cabecera Cookie (evita una dependencia extra). */
+// Parsea las cookies de las cabeceras HTTP de la petición
 function leerCookies(req) {
   const cabecera = req.headers ? req.headers.cookie : '';
   const salida = Object.create(null);
@@ -128,6 +96,7 @@ function leerCookies(req) {
   return salida;
 }
 
+// Configura la cookie de sesión en la respuesta con flag HttpOnly y SameSite
 function ponerCookieSesion(res, token) {
   const seguro = process.env.NODE_ENV === 'production' ? '; Secure' : '';
   res.append(
@@ -137,16 +106,18 @@ function ponerCookieSesion(res, token) {
   );
 }
 
+// Elimina la cookie de sesión expirándola de inmediato
 function borrarCookieSesion(res) {
   const seguro = process.env.NODE_ENV === 'production' ? '; Secure' : '';
   res.append('Set-Cookie', NOMBRE_COOKIE + '=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' + seguro);
 }
 
-/** Extrae y valida la sesion de la peticion. */
+// Extrae y valida la sesión desde la petición actual
 function sesionDe(req) {
   return verificarToken(leerCookies(req)[NOMBRE_COOKIE]);
 }
 
+// Exportación del módulo
 module.exports = {
   USUARIO,
   NOMBRE_COOKIE,

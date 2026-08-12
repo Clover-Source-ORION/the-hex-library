@@ -1,13 +1,4 @@
-/* ==========================================================================
-   THE HEX LIBRARY - Capa de administracion
-   --------------------------------------------------------------------------
-   Archivo INDEPENDIENTE. style.css no se modifica en absoluto: aqui solo se
-   añaden clases nuevas con prefijo .adm-, y todas consumen las variables ya
-   definidas en :root (--neon-cian, --fuente-pixel, etc.) para que el panel
-   herede la estetica del sitio sin alterar ninguna regla existente.
-   ========================================================================== */
-
-/* --- Disparador discreto en el pie de pagina ------------------------------ */
+/* --- Botón disparador en el pie de página --- */
 .adm-trigger {
     background: none;
     border: none;
@@ -15,15 +6,10 @@
     margin-top: 0.5rem;
     font-family: var(--fuente-tech);
     font-size: 0.75rem;
-    /* Mismo gris del pie que ya usa el diseño: discreto pero legible.
-       Antes era #2f2f47, casi indistinguible del fondo. */
     color: #4a4a6a;
     cursor: pointer;
     letter-spacing: 1px;
     transition: color 0.3s, text-shadow 0.3s;
-
-    /* Blindaje de interaccion: garantiza que ninguna capa transparente ni un
-       apilado heredado dejen el boton fuera del alcance del puntero. */
     position: relative;
     z-index: 10;
     pointer-events: auto;
@@ -36,7 +22,7 @@
     outline: none;
 }
 
-/* --- Capa oscura compartida por el modal y el panel ----------------------- */
+/* --- Fondo superpuesto u overlay para modales --- */
 .adm-overlay {
     position: fixed;
     inset: 0;
@@ -49,15 +35,12 @@
     padding: 1.5rem;
 }
 
-/* Un overlay oculto no debe existir para el puntero bajo ninguna circunstancia.
-   El atributo hidden por si solo lo anula cualquier regla de display de autor,
-   por eso se declara explicitamente junto con pointer-events. */
 .adm-overlay[hidden] {
     display: none !important;
     pointer-events: none;
 }
 
-/* --- Modal de acceso ------------------------------------------------------ */
+/* --- Modal de inicio de sesión --- */
 .adm-modal {
     background-color: var(--bg-secundario);
     border: 1px solid var(--neon-cian);
@@ -82,7 +65,7 @@
     margin-bottom: 1.6rem;
 }
 
-/* --- Panel a pantalla completa -------------------------------------------- */
+/* --- Estructura principal del panel de administración --- */
 .adm-panel {
     background-color: var(--bg-principal);
     border: 1px solid #1a1a2e;
@@ -125,7 +108,7 @@
     flex-wrap: wrap;
 }
 
-/* --- Pestañas del panel (mismo lenguaje visual que .tab-btn) -------------- */
+/* --- Sistema de pestañas y cuerpo principal --- */
 .adm-tabs {
     display: flex;
     gap: 0.75rem;
@@ -143,7 +126,7 @@
     display: none;
 }
 
-/* --- Botones auxiliares --------------------------------------------------- */
+/* --- Estilos base y variantes de botones --- */
 .adm-btn {
     background: transparent;
     border: 1px solid #1a1a2e;
@@ -181,7 +164,7 @@
     box-shadow: 0 0 10px rgba(57, 255, 20, 0.25);
 }
 
-/* --- Mensajes de estado --------------------------------------------------- */
+/* --- Mensajes de estado y texto auxiliar --- */
 .adm-status {
     font-size: 0.8rem;
     margin-top: 1rem;
@@ -207,7 +190,7 @@
     padding: 2rem 0;
 }
 
-/* --- Visor de transmisiones ----------------------------------------------- */
+/* --- Visor de lista e ítems de mensajes --- */
 .adm-lista {
     display: flex;
     flex-direction: column;
@@ -259,7 +242,7 @@
     margin-bottom: 0.9rem;
 }
 
-/* --- Monitor de consola --------------------------------------------------- */
+/* --- Monitor y consola de registros (logs) --- */
 .adm-consola {
     background-color: #05050a;
     border: 1px solid #1a1a2e;
@@ -317,7 +300,7 @@
     cursor: pointer;
 }
 
-/* --- Editor de contenido -------------------------------------------------- */
+/* --- Formulario del editor de contenido --- */
 .adm-editor-aviso {
     font-size: 0.78rem;
     color: var(--texto-mutado);
@@ -389,7 +372,7 @@
     background: linear-gradient(to top, var(--bg-principal) 70%, transparent);
 }
 
-/* --- Responsive ----------------------------------------------------------- */
+/* --- Diseños responsivos para pantallas pequeñas --- */
 @media (max-width: 768px) {
     .adm-overlay { padding: 0; }
 

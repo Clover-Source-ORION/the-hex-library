@@ -1,35 +1,12 @@
-/**
- * The Hex Library - Panel de administracion / Modo Developer.
- * ----------------------------------------------------------------------------
- * Tres modulos: Visor de Transmisiones, Monitor de Consola y Editor Frontend.
- *
- * SEGURIDAD: aqui no hay ninguna credencial. El login se resuelve en el
- * servidor (POST /api/admin/login) y la sesion viaja en una cookie httpOnly que
- * este script no puede leer. Ocultar el panel es solo comodidad visual; la
- * proteccion real esta en que /api/comentarios y PUT /api/contenido devuelven
- * 401 sin sesion valida.
- */
+// Módulo autoejecutable (IIFE) del panel de administración
 (function () {
   'use strict';
 
-  /**
-   * Marcador de version. Se imprime al EVALUAR el script, no al inicializarlo,
-   * para que aparezca en consola aunque algo falle despues. Si no ves esta
-   * linea, el navegador esta ejecutando un admin.js antiguo desde cache.
-   */
+  // Identificador de versión para depuración en consola
   var VERSION = 'admin.js v3';
   console.info('[admin] ' + VERSION + ' cargado.');
 
-  // --------------------------------------------------------------------------
-  // Cliente HTTP PROPIO.
-  //
-  // Antes este modulo hacia `if (!window.HexApp) return;`. Bastaba con que
-  // main.js no se hubiera evaluado (cache mixta, error previo, orden alterado)
-  // para que el panel entero quedara sin registrar un solo listener y el boton
-  // no hiciera absolutamente nada. Ahora admin.js es autosuficiente: usa las
-  // utilidades de main.js si estan, y si no, las suyas.
-  // --------------------------------------------------------------------------
-
+  // Configuración de tiempo de espera y detección automática de la URL base de la API
   var TIMEOUT_MS = 10000;
 
   var API_BASE = (function () {
@@ -45,6 +22,7 @@
     return loc.origin + '/api';
   })();
 
+  // Cliente HTTP propio con soporte para timeout y manejo centralizado de errores
   function peticionPropia(ruta, opciones) {
     var controlador = new AbortController();
     var temporizador = setTimeout(function () { controlador.abort(); }, TIMEOUT_MS);
@@ -81,13 +59,13 @@
       .finally(function () { clearTimeout(temporizador); });
   }
 
-  /** Delega en main.js si esta disponible; si no, resuelve por su cuenta. */
+  // Utiliza el cliente HTTP de main.js si está presente; de lo contrario usa el propio
   function peticion(ruta, opciones) {
     var externo = window.HexApp && window.HexApp.peticion;
     return externo ? externo(ruta, opciones) : peticionPropia(ruta, opciones);
   }
 
-  /** Acceso tolerante a las utilidades de contenido de main.js. */
+  // Puerta de enlace segura con los métodos globales expuestos por main.js
   var app = {
     originales: function () {
       return window.HexApp && window.HexApp.originales ? window.HexApp.originales() : {};
@@ -100,6 +78,7 @@
     }
   };
 
+  // Mapeo de categorías y estado global de la sesión y del panel
   var ETIQUETAS_TOPIC = { error: 'ERRATA', request: 'SOLICITUD', bug: 'BUG' };
 
   var estado = {
@@ -111,13 +90,9 @@
     autoScroll: true
   };
 
-  // Referencias del DOM (se resuelven en iniciar()).
   var el = {};
 
-  // ==========================================================================
-  // Utilidades
-  // ==========================================================================
-
+  // Auxiliares para manipulación del DOM, mensajes de estado y fechas
   function mostrar(nodo, visible) {
     if (nodo) nodo.hidden = !visible;
   }
@@ -153,10 +128,7 @@
     contenedor.appendChild(crear('p', 'adm-vacio', texto));
   }
 
-  // ==========================================================================
-  // 1. Sesion
-  // ==========================================================================
-
+  // Gestión de estado de sesión (verificación, autenticación y cierre)
   function comprobarSesion() {
     return peticion('/admin/session', { method: 'GET' })
       .then(function (respuesta) {
@@ -224,7 +196,7 @@
 
   function cerrarSesion() {
     peticion('/admin/logout', { method: 'POST' })
-      .catch(function () { /* Aunque falle la red, se cierra en local. */ })
+      .catch(function () { })
       .finally(function () {
         estado.autenticado = false;
         estado.usuario = null;
@@ -233,10 +205,7 @@
       });
   }
 
-  // ==========================================================================
-  // 2. Panel y navegacion por pestanas
-  // ==========================================================================
-
+  // Control del modal principal y navegación por pestañas
   function abrirPanel() {
     mostrar(el.panelOverlay, true);
     el.usuarioEtiqueta.textContent = 'SESION: ' + (estado.usuario || 'admin');
@@ -262,7 +231,6 @@
       mostrar(vista, vista.getAttribute('data-vista') === nombre);
     });
 
-    // El monitor solo escucha mientras esta a la vista.
     if (nombre !== 'consola' && estado.desuscribirConsola) {
       estado.desuscribirConsola();
       estado.desuscribirConsola = null;
@@ -273,10 +241,7 @@
     if (nombre === 'editor') montarEditor();
   }
 
-  // ==========================================================================
-  // 3. Visor de Transmisiones
-  // ==========================================================================
-
+  // Módulo 1: Visor de Transmisiones (consulta, renderizado y eliminación de mensajes)
   function tarjetaTransmision(comentario) {
     var item = crear('article', 'adm-item t-' + (comentario.topic || 'log'));
 
@@ -364,7 +329,6 @@
       .finally(function () { el.trPurgar.disabled = false; });
   }
 
-  /** Si la cookie expiro, se devuelve al usuario al modal de acceso. */
   function manejarExpiracion() {
     estado.autenticado = false;
     cerrarPanel();
@@ -372,10 +336,7 @@
     estadoEn(el.loginStatus, 'La sesion expiro. Vuelve a autenticarte.', 'error');
   }
 
-  // ==========================================================================
-  // 4. Monitor de Consola
-  // ==========================================================================
-
+  // Módulo 2: Monitor de Consola (impresión y auto-scroll de logs del sistema)
   function lineaLog(entrada) {
     var linea = crear('div', 'adm-log n-' + entrada.nivel);
     linea.appendChild(crear('span', 'adm-log-hora', entrada.hora.toLocaleTimeString('es-CO', { hour12: false })));
@@ -387,7 +348,6 @@
   function anexarLog(entrada) {
     el.consolaSalida.appendChild(lineaLog(entrada));
 
-    // Se poda el DOM al mismo limite del buffer para no degradar el rendimiento.
     while (el.consolaSalida.childElementCount > window.HexConsola.MAX_ENTRADAS) {
       el.consolaSalida.removeChild(el.consolaSalida.firstChild);
     }
@@ -409,10 +369,7 @@
     }
   }
 
-  // ==========================================================================
-  // 5. Editor Frontend (Modo Developer)
-  // ==========================================================================
-
+  // Módulo 3: Editor Frontend (generación de controles, previsualización y guardado)
   function campoEditor(definicion, valorActual) {
     var envoltorio = crear('div', 'adm-campo');
     envoltorio.setAttribute('data-clave', definicion.clave);
@@ -434,7 +391,6 @@
     control.value = valorActual;
     control.setAttribute('data-clave', definicion.clave);
 
-    // Vista previa inmediata: se aplica al DOM real conforme se escribe.
     control.addEventListener('input', function () {
       envoltorio.classList.add('modificado');
       previsualizar();
@@ -444,7 +400,6 @@
     return envoltorio;
   }
 
-  /** Recoge el estado actual del formulario del editor. */
   function recogerEditor() {
     var salida = {};
     var controles = el.editorCampos.querySelectorAll('[data-clave]');
@@ -453,14 +408,12 @@
       if (!control.value) return;
       var clave = control.getAttribute('data-clave');
       var original = app.originales()[clave];
-      // Solo se envia lo que realmente difiere del texto original del HTML.
       if (control.value !== original) salida[clave] = control.value;
     });
 
     return salida;
   }
 
-  /** Aplica el borrador al DOM sin guardarlo todavia. */
   function previsualizar() {
     app.aplicarContenido(recogerEditor());
   }
@@ -481,7 +434,6 @@
         var originales = app.originales();
         vaciar(el.editorCampos);
 
-        // Los campos se agrupan por seccion para que el editor sea navegable.
         var grupos = {};
         var orden = [];
 
@@ -532,11 +484,9 @@
         estado.overrides = respuesta.data || {};
         app.aplicarContenido(estado.overrides);
 
-        // Se refresca tambien la cache local para que el proximo arranque
-        // pinte los textos nuevos antes incluso de contactar al servidor.
         try {
           window.localStorage.setItem(app.CLAVE_CONTENIDO, JSON.stringify(estado.overrides));
-        } catch (error) { /* noop */ }
+        } catch (error) { }
 
         var total = Object.keys(estado.overrides).length;
         estadoEn(el.editorStatus, 'Guardado. ' + total + ' texto(s) sobrescrito(s) de forma permanente.', 'exito');
@@ -563,9 +513,8 @@
         estado.overrides = {};
         app.aplicarContenido({});
 
-        try { window.localStorage.removeItem(app.CLAVE_CONTENIDO); } catch (error) { /* noop */ }
+        try { window.localStorage.removeItem(app.CLAVE_CONTENIDO); } catch (error) { }
 
-        // Se repuebla el formulario con los textos originales.
         var originales = app.originales();
         Array.prototype.forEach.call(
           el.editorCampos.querySelectorAll('[data-clave]'),
@@ -582,10 +531,7 @@
       .finally(function () { el.editorRestaurar.disabled = false; });
   }
 
-  // ==========================================================================
-  // Arranque
-  // ==========================================================================
-
+  // Inicialización del DOM, event listeners y accesos de teclado
   function referencias() {
     el.trigger = document.getElementById('adm-trigger');
 
@@ -621,11 +567,7 @@
     el.editorStatus = document.getElementById('adm-editor-status');
   }
 
-  /**
-   * Registro defensivo: si un nodo falta, se avisa y se sigue.
-   * Antes, un unico getElementById nulo lanzaba una excepcion a mitad de
-   * eventos() y todos los listeners posteriores se quedaban sin registrar.
-   */
+  // Registro seguro de escuchadores de eventos
   function on(nodo, tipo, manejador, nombre) {
     if (!nodo || typeof nodo.addEventListener !== 'function') {
       console.warn('[admin] Elemento ausente, listener no registrado: ' + nombre);
@@ -635,6 +577,7 @@
     return true;
   }
 
+  // Asignación de manejadores para interacción, botones y atajos (Escape / Ctrl + Shift + A)
   function eventos() {
     on(el.trigger, 'click', abrirLogin, '#adm-trigger');
     on(el.loginForm, 'submit', manejarLogin, '#adm-login-form');
@@ -670,16 +613,13 @@
     on(el.editorGuardar, 'click', guardarEditor, '#adm-editor-guardar');
     on(el.editorRestaurar, 'click', restaurarEditor, '#adm-editor-restaurar');
 
-    // Escape cierra la capa que este abierta.
     document.addEventListener('keydown', function (evento) {
       if (evento.key !== 'Escape') return;
       if (!el.panelOverlay.hidden) cerrarPanel();
       else if (!el.loginOverlay.hidden) cerrarLogin();
     });
 
-    // Atajo discreto: Ctrl + Shift + A.
     document.addEventListener('keydown', function (evento) {
-      // evento.key puede venir undefined con algunos IME/teclados: se comprueba.
       if (evento.ctrlKey && evento.shiftKey && typeof evento.key === 'string' && evento.key.toLowerCase() === 'a') {
         evento.preventDefault();
         abrirLogin();
@@ -687,18 +627,12 @@
     });
   }
 
-  /**
-   * Red de seguridad: delegacion en document.
-   * Aunque algo fallara al registrar el listener directo, o el boton se
-   * reemplazara en el DOM, el clic se sigue capturando en la fase de burbujeo.
-   * Se instala ANTES que nada para que sea lo ultimo en poder romperse.
-   */
+  // Delegación de eventos global como respaldo para abrir la ventana de login
   function delegacionDeRespaldo() {
     document.addEventListener('click', function (evento) {
       var destino = evento.target.closest ? evento.target.closest('#adm-trigger') : null;
       if (!destino) return;
       evento.preventDefault();
-      // Si el listener directo ya abrio el modal, no se hace nada.
       if (el.loginOverlay && !el.loginOverlay.hidden) return;
       if (el.panelOverlay && !el.panelOverlay.hidden) return;
       abrirLogin();
@@ -707,6 +641,7 @@
 
   var yaIniciado = false;
 
+  // Punto de entrada: vinculación del ciclo de vida e inicio de verificaciones
   function iniciar() {
     if (yaIniciado) return;
     yaIniciado = true;
@@ -724,7 +659,6 @@
       return;
     }
 
-    // Si eventos() fallara, el modulo no debe quedar mudo: la delegacion sigue viva.
     try {
       eventos();
     } catch (error) {
@@ -737,7 +671,6 @@
 
     console.info('[admin] Panel listo. Acceso por el pie de pagina o Ctrl + Shift + A.');
 
-    // Si ya existe una cookie valida, el boton abre el panel directamente.
     comprobarSesion().then(function (activa) {
       if (activa) {
         el.trigger.textContent = '[ PANEL_ADMINISTRADOR ]';

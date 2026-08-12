@@ -1,25 +1,7 @@
-/**
- * The Hex Library - Logica publica de interfaz.
- * Sin dependencias externas. Todo el renderizado usa textContent/createElement
- * (nunca innerHTML) para que un texto malicioso no pueda ejecutarse como HTML.
- *
- * NOTA DE PRIVACIDAD: este archivo ya NO consulta ni pinta el registro de
- * transmisiones. El listado vive exclusivamente en el panel de administracion
- * (js/admin.js) y su endpoint exige sesion en el servidor.
- */
 (function () {
   'use strict';
 
-  // ==========================================================================
-  // Configuracion
-  // ==========================================================================
-
-  /**
-   * Resolucion del origen de la API.
-   * - Servido por el propio backend (produccion o `npm start`) -> mismo origen.
-   * - Abierto con file:// o Live Server (:5500) -> apunta al backend local.
-   * - Se puede forzar definiendo window.HEX_API_BASE antes de cargar este script.
-   */
+  // Determinación de la URL base para las peticiones a la API según el entorno
   var API_BASE = (function () {
     if (window.HEX_API_BASE) return window.HEX_API_BASE;
 
@@ -32,6 +14,7 @@
     return loc.origin + '/api';
   })();
 
+  // Constantes de configuración, almacenamiento y validación
   var CLAVE_BORRADOR = 'hexlib:borrador-contacto';
   var CLAVE_CONTENIDO = 'hexlib:contenido-cache';
   var TIMEOUT_MS = 10000;
@@ -43,17 +26,13 @@
 
   var TOPICS_VALIDOS = { error: true, request: true, bug: true };
 
-  // ==========================================================================
-  // 1. Cliente HTTP con timeout y errores tipados
-  // ==========================================================================
-
+  // Cliente HTTP con tiempo de espera máximo (timeout) y manejo de errores
   function peticion(ruta, opciones) {
     var controlador = new AbortController();
     var temporizador = setTimeout(function () { controlador.abort(); }, TIMEOUT_MS);
 
     var config = Object.assign({ headers: {}, signal: controlador.signal }, opciones || {});
     config.headers = Object.assign({ Accept: 'application/json' }, config.headers);
-    // Imprescindible para que viaje la cookie httpOnly de sesion del administrador.
     config.credentials = 'include';
 
     return fetch(API_BASE + ruta, config)
@@ -87,17 +66,10 @@
       .finally(function () { clearTimeout(temporizador); });
   }
 
-  // ==========================================================================
-  // 2. Contenido editable (Modo Developer)
-  // ==========================================================================
-
-  /**
-   * Los textos por defecto viven en el HTML. Al arrancar se capturan en memoria
-   * para poder revertir cualquier sobrescritura sin recargar la pagina y para
-   * que el editor sepa cual es el valor original de cada clave.
-   */
+  // Almacenamiento local para revertir cambios dinámicos en el DOM
   var textosOriginales = {};
 
+  // Guarda el texto original de los elementos marcados como editables
   function capturarOriginales() {
     var nodos = document.querySelectorAll('[data-editable]');
     Array.prototype.forEach.call(nodos, function (nodo) {
@@ -108,11 +80,7 @@
     });
   }
 
-  /**
-   * Aplica un mapa { clave: texto } al DOM.
-   * Solo escribe textContent de elementos marcados con data-editable: nunca
-   * atributos, ids, name, href ni valores de formulario.
-   */
+  // Actualiza el texto de los elementos editables en el DOM de forma segura
   function aplicarContenido(overrides) {
     var mapa = overrides && typeof overrides === 'object' ? overrides : {};
 
@@ -130,26 +98,19 @@
     document.dispatchEvent(new CustomEvent('hex:contenido-aplicado', { detail: mapa }));
   }
 
-  /**
-   * Persistencia en dos niveles:
-   *  1. Cache en localStorage -> se pinta al instante, sin esperar a la red.
-   *  2. Archivo JSON del servidor -> fuente de verdad compartida por todos los
-   *     visitantes; al llegar, sobrescribe la cache.
-   */
+  // Carga textos desde la memoria local y luego sincroniza con la API
   function cargarContenido() {
     try {
       var cacheado = window.localStorage.getItem(CLAVE_CONTENIDO);
       if (cacheado) aplicarContenido(JSON.parse(cacheado));
-    } catch (error) {
-      /* Cache corrupta o almacenamiento bloqueado: se ignora. */
-    }
+    } catch (error) {}
 
     return peticion('/contenido', { method: 'GET' })
       .then(function (respuesta) {
         aplicarContenido(respuesta.data);
         try {
           window.localStorage.setItem(CLAVE_CONTENIDO, JSON.stringify(respuesta.data || {}));
-        } catch (error) { /* noop */ }
+        } catch (error) {}
         return respuesta.data;
       })
       .catch(function (error) {
@@ -157,21 +118,11 @@
       });
   }
 
-  // ==========================================================================
-  // 3. Filtro del catalogo por consola
-  // ==========================================================================
-
-  /**
-   * Muestra u oculta las tarjetas segun la consola.
-   * Se expone en window porque el marcado historico la invocaba por onclick.
-   * @param {string} categoria 'todas' | 'gba' | 'nds-3ds' | 'switch'
-   */
+  // Filtra los elementos visibles del catálogo según la consola seleccionada
   function filtrarConsola(categoria) {
     var botones = document.querySelectorAll('.tab-btn');
     var tarjetas = document.querySelectorAll('.card-manual');
 
-    // El estado activo se decide por data-filtro, no por el texto visible: asi
-    // el filtro sigue funcionando aunque el Modo Developer renombre la pestana.
     Array.prototype.forEach.call(botones, function (boton) {
       var esActivo = boton.getAttribute('data-filtro') === categoria;
       boton.classList.toggle('active', esActivo);
@@ -181,8 +132,6 @@
     Array.prototype.forEach.call(tarjetas, function (tarjeta) {
       var consola = tarjeta.getAttribute('data-consola');
       var visible = categoria === 'todas' || consola === categoria;
-      // Cadena vacia (no 'block') para devolver la tarjeta a su display natural
-      // dentro del grid y no romper la maquetacion.
       tarjeta.style.display = visible ? '' : 'none';
       tarjeta.setAttribute('aria-hidden', visible ? 'false' : 'true');
     });
@@ -190,6 +139,7 @@
 
   window.filtrarConsola = filtrarConsola;
 
+  // Asigna eventos a las pestañas de navegación del catálogo
   function inicializarPestanas() {
     var contenedor = document.querySelector('.tabs-container');
     if (!contenedor) return;
@@ -201,15 +151,12 @@
     });
   }
 
-  // ==========================================================================
-  // 4. Validacion del formulario
-  // ==========================================================================
-
+  // Limpieza básica de espacios en cadenas de texto
   function limpiar(valor) {
     return typeof valor === 'string' ? valor.trim() : '';
   }
 
-  /** Espejo de las reglas del servidor. El servidor sigue siendo la autoridad. */
+  // Comprueba que los campos del formulario cumplan los límites y formatos requeridos
   function validarFormulario(datos) {
     var errores = {};
 
@@ -238,6 +185,7 @@
     return errores;
   }
 
+  // Oculta las alertas de error activas en el formulario
   function limpiarErrores(formulario) {
     var slots = formulario.querySelectorAll('[data-error-for]');
     Array.prototype.forEach.call(slots, function (slot) {
@@ -251,6 +199,7 @@
     });
   }
 
+  // Muestra mensajes de error debajo de los campos correspondientes
   function pintarErrores(formulario, errores) {
     var primero = null;
 
@@ -270,6 +219,7 @@
     if (primero) primero.focus();
   }
 
+  // Actualiza la caja de estado general del formulario
   function mostrarEstado(mensaje, tipo) {
     var caja = document.getElementById('form-status');
     if (!caja) return;
@@ -278,10 +228,7 @@
     caja.setAttribute('data-estado', tipo || 'info');
   }
 
-  // ==========================================================================
-  // 5. Borrador local
-  // ==========================================================================
-
+  // Guarda las entradas del formulario en localStorage mientras el usuario escribe
   function guardarBorrador(formulario) {
     try {
       window.localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({
@@ -290,11 +237,10 @@
         topic: formulario.elements.topic.value,
         message: formulario.elements.message.value
       }));
-    } catch (error) {
-      /* Modo privado o almacenamiento lleno: el borrador es opcional. */
-    }
+    } catch (error) {}
   }
 
+  // Recupera el borrador guardado en localStorage al cargar el formulario
   function restaurarBorrador(formulario) {
     try {
       var crudo = window.localStorage.getItem(CLAVE_BORRADOR);
@@ -309,25 +255,23 @@
         }
       });
     } catch (error) {
-      try { window.localStorage.removeItem(CLAVE_BORRADOR); } catch (e) { /* noop */ }
+      try { window.localStorage.removeItem(CLAVE_BORRADOR); } catch (e) {}
     }
   }
 
+  // Elimina el borrador del almacenamiento local
   function borrarBorrador() {
-    try { window.localStorage.removeItem(CLAVE_BORRADOR); } catch (error) { /* noop */ }
+    try { window.localStorage.removeItem(CLAVE_BORRADOR); } catch (error) {}
   }
 
-  // ==========================================================================
-  // 6. Envio del formulario
-  // ==========================================================================
-
-  /** Texto de confirmacion: editable desde el panel via data-editable. */
+  // Retorna el mensaje de éxito tras un envío correcto
   function textoConfirmacion() {
     var plantilla = document.querySelector('[data-editable="contacto.confirmacion"]');
     var texto = plantilla ? plantilla.textContent.trim() : '';
     return texto || 'Paquete recibido. Gracias por tu transmision.';
   }
 
+  // Gestiona el ciclo de envío, eventos y validación del formulario de contacto
   function inicializarFormulario() {
     var formulario = document.getElementById('contact-form');
     if (!formulario) return;
@@ -339,7 +283,6 @@
     formulario.addEventListener('input', function () { guardarBorrador(formulario); });
 
     formulario.addEventListener('submit', function (evento) {
-      // Sin esto el navegador recargaba la pagina y se perdia todo el paquete.
       evento.preventDefault();
 
       if (enviando) return;
@@ -363,8 +306,6 @@
       }
 
       enviando = true;
-      // El texto original se lee aqui, no al inicializar, para que el Modo
-      // Developer pueda renombrar el boton sin que se restaure el valor viejo.
       var textoOriginal = boton ? boton.textContent : '';
       if (boton) {
         boton.disabled = true;
@@ -380,8 +321,6 @@
         .then(function () {
           formulario.reset();
           borrarBorrador();
-          // Acuse de recibo breve. No se muestra el historial ni los mensajes
-          // de otros usuarios: ese registro es privado del administrador.
           mostrarEstado(textoConfirmacion(), 'exito');
         })
         .catch(function (error) {
@@ -398,10 +337,7 @@
     });
   }
 
-  // ==========================================================================
-  // API interna compartida con el panel de administracion
-  // ==========================================================================
-
+  // Exposición de funciones principales para compartir contexto con otros scripts
   window.HexApp = {
     API_BASE: API_BASE,
     peticion: peticion,
@@ -411,15 +347,10 @@
     CLAVE_CONTENIDO: CLAVE_CONTENIDO
   };
 
-  // ==========================================================================
-  // Arranque
-  // ==========================================================================
-
+  // Punto de entrada para inicializar la interfaz una vez cargado el DOM
   var yaIniciado = false;
 
   function iniciar() {
-    // Un segundo DOMContentLoaded o una doble inclusion del script duplicarian
-    // los listeners y, con ellos, los envios del formulario.
     if (yaIniciado) return;
     yaIniciado = true;
 

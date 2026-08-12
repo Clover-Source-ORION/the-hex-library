@@ -1,76 +1,38 @@
-/* ==========================================================================
-   THE HEX LIBRARY — HOJA DE ESTILOS DE LA VISTA DE LECTURA
-   --------------------------------------------------------------------------
-   ARCHIVO INDEPENDIENTE. No redefine :root, ni body, ni ningun selector de
-   etiqueta suelto: todo cuelga de .reader-page / .reader-container. Puede
-   cargarse junto a style.css y admin.css sin alterar un solo pixel del
-   catalogo, el formulario ni el panel de administracion.
-
-   Se enlaza SOLO en los documentos de lectura:
-       <link rel="stylesheet" href="../css/reader.css?v=1">
-   ========================================================================== */
-
-
-/* --------------------------------------------------------------------------
-   1. TOKENS LOCALES
-   Declarados en .reader-page (no en :root) para que su alcance muera con el
-   contenedor. Las variables globales --neon-verde / --neon-cian del proyecto
-   quedan intactas y siguen mandando en header, nav y footer.
-   -------------------------------------------------------------------------- */
+/* --- Variables locales para la vista de lectura --- */
 .reader-page {
-    /* Fondos */
     --rd-bg: #0B0C10;
     --rd-bg-alt: #0D0E12;
     --rd-surface: #12141A;
     --rd-surface-alt: #0F1116;
     --rd-borde: #1E222D;
 
-    /* Texto */
     --rd-texto: #D1D5DB;
     --rd-texto-alt: #C5C6C7;
     --rd-meta: #6B7280;
     --rd-meta-tenue: #4E5460;
 
-    /* Acentos */
     --rd-acento: #00FF9D;
     --rd-acento-2: #00E5FF;
     --rd-alerta: #FF395C;
 
-    /* Tipografia: reutiliza las familias ya cargadas por index.html */
     --rd-mono: 'Fira Code', 'JetBrains Mono', 'Courier New', monospace;
     --rd-pixel: 'VT323', 'Fira Code', monospace;
 
-    /* Ritmo vertical */
     --rd-parrafo: 1.5rem;
     --rd-interlineado: 1.75;
 }
 
-
-/* --------------------------------------------------------------------------
-   2. LIENZO DE LA PAGINA
-   -------------------------------------------------------------------------- */
+/* --- Fondo y lienzo general de la página --- */
 .reader-page {
     background-color: var(--rd-bg);
     background-image:
         radial-gradient(circle at 50% -10%, rgba(0, 229, 255, 0.05) 0%, transparent 55%);
     border-top: 1px solid var(--rd-borde);
-    padding: 1px 5% 4rem;          /* 1px superior: contiene el margin del hijo */
+    padding: 1px 5% 4rem;
     min-height: 60vh;
 }
 
-
-/* --------------------------------------------------------------------------
-   3. CONTENEDOR DEL DOCUMENTO
-   max-width en ch (no en px) para que la medida siga al tamano de fuente del
-   usuario.
-
-   box-sizing: content-box es deliberado y solo afecta a este elemento. El
-   reset global `* { box-sizing: border-box }` haria que los 88px de padding
-   se comieran la medida y la linea bajaria a ~55 caracteres, por debajo del
-   objetivo. Con content-box los 72ch son texto real (~63 caracteres por
-   linea) y el ancho total queda en ~744px. Los descendientes siguen en
-   border-box, heredado del reset: aqui no se reintroduce nada global.
-   -------------------------------------------------------------------------- */
+/* --- Contenedor principal centrado para la lectura --- */
 .reader-container {
     box-sizing: content-box;
     max-width: 72ch;
@@ -86,12 +48,7 @@
     box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.9);
 }
 
-
-/* --------------------------------------------------------------------------
-   4. ENCABEZADO TECNICO DEL ARCHIVO
-   Elemento firma de la vista: caja de metadatos tipo volcado de terminal con
-   corchetes de esquina y testigo de estado.
-   -------------------------------------------------------------------------- */
+/* --- Tarjeta de metadatos y estado del archivo --- */
 .reader-filecard {
     position: relative;
     margin-bottom: 2.5rem;
@@ -102,7 +59,6 @@
     border-radius: 4px;
 }
 
-/* Corchetes de esquina: puro decorado, sin nodos extra en el HTML. */
 .reader-filecard::before,
 .reader-filecard::after {
     content: '';
@@ -155,7 +111,6 @@
     font-weight: 600;
 }
 
-/* Testigo de estado READ_ONLY */
 .reader-status {
     display: inline-flex;
     align-items: center;
@@ -178,11 +133,7 @@
     50%      { opacity: 0.25; }
 }
 
-
-/* --------------------------------------------------------------------------
-   5. ETIQUETAS DE CONSOLA
-   Mismo lenguaje visual que .manual-badge del catalogo, sin tocar esa clase.
-   -------------------------------------------------------------------------- */
+/* --- Etiquetas estilo consola por plataforma --- */
 .reader-tag {
     display: inline-block;
     margin-bottom: 1rem;
@@ -197,10 +148,7 @@
 .reader-tag.nds    { color: var(--rd-acento-2); background: rgba(0, 229, 255, 0.10);  border: 1px solid var(--rd-acento-2); }
 .reader-tag.switch { color: var(--rd-acento);   background: rgba(0, 255, 157, 0.10);  border: 1px solid var(--rd-acento); }
 
-
-/* --------------------------------------------------------------------------
-   6. JERARQUIA TIPOGRAFICA
-   -------------------------------------------------------------------------- */
+/* --- Títulos, párrafos y jerarquía del cuerpo de texto --- */
 .reader-container h1 {
     font-family: var(--rd-pixel);
     font-size: 2.6rem;
@@ -210,8 +158,6 @@
     margin: 0 0 0.75rem;
 }
 
-/* El .main-header global es position: sticky. Sin este margen, un salto desde
-   el indice deja el titulo escondido debajo de la barra. */
 .reader-container [id] {
     scroll-margin-top: 7rem;
 }
@@ -226,7 +172,6 @@
     border-bottom: 1px solid var(--rd-borde);
 }
 
-/* Prefijo de terminal: marca el inicio de seccion sin añadir nodos. */
 .reader-container h2::before {
     content: '>_ ';
     color: var(--rd-acento-2);
@@ -270,10 +215,7 @@
     margin: 2.5rem 0;
 }
 
-
-/* --------------------------------------------------------------------------
-   7. ENLACES
-   -------------------------------------------------------------------------- */
+/* --- Estilos de enlaces e interacciones --- */
 .reader-container a {
     color: var(--rd-acento-2);
     text-decoration: none;
@@ -295,10 +237,7 @@
     border-radius: 2px;
 }
 
-
-/* --------------------------------------------------------------------------
-   8. LISTAS
-   -------------------------------------------------------------------------- */
+/* --- Listas generales y listas de definiciones --- */
 .reader-container ul,
 .reader-container ol {
     margin: 0 0 var(--rd-parrafo);
@@ -309,7 +248,6 @@
 .reader-container li { margin-bottom: 0.55rem; }
 .reader-container li::marker { color: var(--rd-acento); }
 
-/* Lista de definiciones para glosarios de campos */
 .reader-defs {
     margin: 0 0 var(--rd-parrafo);
     padding-left: 1.1rem;
@@ -328,10 +266,7 @@
     color: var(--rd-texto);
 }
 
-
-/* --------------------------------------------------------------------------
-   9. CODIGO Y VOLCADOS HEXADECIMALES
-   -------------------------------------------------------------------------- */
+/* --- Bloques de código y volcados hexadecimales --- */
 .reader-container code {
     font-family: var(--rd-mono);
     font-size: 0.85em;
@@ -379,7 +314,6 @@
     tab-size: 4;
 }
 
-/* Dentro de <pre> el code no lleva caja: heredaria fondo y borde. */
 .reader-code pre code {
     all: unset;
     font-family: inherit;
@@ -388,15 +322,11 @@
     white-space: pre;
 }
 
-/* Comentarios y offsets resaltados dentro de los volcados */
 .reader-code .cmt { color: var(--rd-meta-tenue); }
 .reader-code .off { color: var(--rd-acento); }
 .reader-code .key { color: var(--rd-acento-2); }
 
-
-/* --------------------------------------------------------------------------
-   10. TABLAS DE DATOS
-   -------------------------------------------------------------------------- */
+/* --- Tablas de datos y celdas auxiliares --- */
 .reader-table-wrap {
     margin: 0 0 var(--rd-parrafo);
     overflow-x: auto;
@@ -454,7 +384,6 @@
     border-bottom: 0;
 }
 
-/* Columna de direcciones / offsets */
 .reader-table td.addr,
 .reader-table th[scope="row"] {
     color: var(--rd-acento-2);
@@ -465,12 +394,7 @@
 .reader-table td.num { text-align: right; white-space: nowrap; }
 .reader-table td.meta { color: var(--rd-meta); }
 
-
-/* --------------------------------------------------------------------------
-   11. SECCIONES PLEGABLES E INDICE
-   Reutiliza el lenguaje de .tab-btn del catalogo (TODAS / GBA / NDS) sin
-   heredar de esa clase, para que un cambio aqui no repercuta alli.
-   -------------------------------------------------------------------------- */
+/* --- Elementos desplegables e índice de contenidos --- */
 .reader-details {
     margin: 0 0 var(--rd-parrafo);
     border: 1px solid var(--rd-borde);
@@ -493,11 +417,9 @@
     user-select: none;
 }
 
-/* Oculta el triangulo nativo en WebKit y Firefox. */
 .reader-details > summary::-webkit-details-marker { display: none; }
 .reader-details > summary::marker { content: ''; }
 
-/* Marcador propio: [+] cerrado, [-] abierto. */
 .reader-details > summary::before {
     content: '[+] ';
     color: var(--rd-acento);
@@ -523,7 +445,6 @@
 
 .reader-details-body > *:last-child { margin-bottom: 1rem; }
 
-/* Indice de contenidos */
 .reader-toc ol {
     margin: 0;
     padding-left: 1.3rem;
@@ -533,10 +454,7 @@
 .reader-toc li { margin-bottom: 0.4rem; }
 .reader-toc li::marker { color: var(--rd-meta-tenue); }
 
-
-/* --------------------------------------------------------------------------
-   12. AVISOS
-   -------------------------------------------------------------------------- */
+/* --- Cajas de avisos y llamadas de atención --- */
 .reader-callout {
     margin: 0 0 var(--rd-parrafo);
     padding: 1rem 1.25rem;
@@ -573,10 +491,7 @@
 
 .reader-callout.dato .reader-callout-title { color: var(--rd-acento); }
 
-
-/* --------------------------------------------------------------------------
-   13. PIE DEL DOCUMENTO Y NAVEGACION ENTRE ARCHIVOS
-   -------------------------------------------------------------------------- */
+/* --- Pie de página y botones de navegación entre archivos --- */
 .reader-footer {
     margin-top: 3rem;
     padding-top: 1.5rem;
@@ -651,10 +566,7 @@
     50%, 100% { opacity: 0; }
 }
 
-
-/* --------------------------------------------------------------------------
-   14. RESPONSIVE
-   -------------------------------------------------------------------------- */
+/* --- Ajustes para dispositivos móviles --- */
 @media (max-width: 768px) {
     .reader-page { padding-left: 4%; padding-right: 4%; }
 
@@ -675,8 +587,6 @@
     .reader-filecard dd { margin-bottom: 0.5rem; }
     .reader-nav a { flex-basis: 100%; }
 
-    /* En pantallas estrechas una ruta larga en <code> desbordaria la caja.
-       Se permite el salto solo aqui: en escritorio los tokens siguen enteros. */
     .reader-container code {
         white-space: normal;
         overflow-wrap: anywhere;
@@ -685,10 +595,7 @@
     .reader-container [id] { scroll-margin-top: 9rem; }
 }
 
-
-/* --------------------------------------------------------------------------
-   15. ACCESIBILIDAD Y IMPRESION
-   -------------------------------------------------------------------------- */
+/* --- Reglas de accesibilidad e impresión --- */
 @media (prefers-reduced-motion: reduce) {
     .reader-page *,
     .reader-page *::before,

@@ -4,20 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Hex Library | Manuales Técnicos & ROM Hacking</title>
-    <!-- Vinculamos los estilos -->
+    
     <link rel="stylesheet" href="css/style.css?v=3">
-    <!-- Capa de administracion: archivo independiente, no altera style.css -->
     <link rel="stylesheet" href="css/admin.css?v=3">
-    <!-- Ajustes de visualizacion en movil: archivo aditivo, solo @media -->
     <link rel="stylesheet" href="css/movil.css?v=1">
-    <!-- Fuente Pixel/Tech de Google Fonts -->
+
+    <!-- Tipografías: Fira Code y VT323 vía Google Fonts (Licencia SIL Open Font License) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- Encabezado / Navegación -->
     <header class="main-header">
         <div class="logo">
             <span>The Hex</span> Library
@@ -31,7 +29,6 @@
         </nav>
     </header>
 
-    <!-- Sección Principal (Hero) -->
     <section class="hero">
         <div class="hero-content">
             <h1 data-editable="hero.titulo">Documentación Tecnica del ROM Hacking</h1>
@@ -40,11 +37,9 @@
         </div>
     </section>
 
-    <!-- Contenedor del Catálogo Avanzado con Filtros por Pestañas -->
     <main id="catalogo" class="catalog-section">
         <h2 class="section-title" data-editable="catalogo.titulo">&gt;_ REGISTROS_DE_MEMORIA</h2>
         
-        <!-- Botones de las Pestañas (Controladores) -->
         <div class="tabs-container">
             <button type="button" class="tab-btn active" data-filtro="todas" aria-selected="true">TODAS</button>
             <button type="button" class="tab-btn" data-filtro="gba" aria-selected="false">GBA</button>
@@ -52,13 +47,9 @@
             <button type="button" class="tab-btn" data-filtro="switch" aria-selected="false">SWITCH</button>
         </div>
         
-        <!-- Grid de los Manuales Técnicos -->
-        <!-- 9 fichas: 3 por consola. El atributo data-consola es el que lee
-             filtrarConsola() en js/main.js y debe coincidir con el data-filtro
-             del boton correspondiente: gba | nds-3ds | switch -->
+        <!-- El valor de data-consola debe coincidir exactamente con los selectores data-filtro (gba | nds-3ds | switch) consumidos por js/main.js -->
         <div class="grid-manuales">
 
-            <!-- Manual 1: GBA -->
             <div class="card-manual" data-consola="gba">
                 <div class="manual-badge gba">GBA</div>
                 <h3 data-editable="manual.1.titulo">Mapa de Memoria y Offsets</h3>
@@ -67,7 +58,6 @@
                 <a href="lecturas/gba-01-mapa-de-memoria.html" class="link-download" data-editable="manual.1.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 2: GBA -->
             <div class="card-manual" data-consola="gba">
                 <div class="manual-badge gba">GBA</div>
                 <h3 data-editable="manual.2.titulo">Paletas BGR555 y Tiles</h3>
@@ -76,7 +66,6 @@
                 <a href="lecturas/gba-02-paletas-y-graficos.html" class="link-download" data-editable="manual.2.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 3: GBA -->
             <div class="card-manual" data-consola="gba">
                 <div class="manual-badge gba">GBA</div>
                 <h3 data-editable="manual.3.titulo">Cabecera del Cartucho</h3>
@@ -85,7 +74,6 @@
                 <a href="lecturas/gba-03-cabecera-de-cartucho.html" class="link-download" data-editable="manual.3.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 4: NDS -->
             <div class="card-manual" data-consola="nds-3ds">
                 <div class="manual-badge nds">NDS</div>
                 <h3 data-editable="manual.4.titulo">Cabecera y Sistema de Archivos</h3>
@@ -94,7 +82,6 @@
                 <a href="lecturas/nds-01-cabecera-y-sistema-de-archivos.html" class="link-download" data-editable="manual.4.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 5: NDS -->
             <div class="card-manual" data-consola="nds-3ds">
                 <div class="manual-badge nds">NDS</div>
                 <h3 data-editable="manual.5.titulo">Contenedores NARC y Compresión</h3>
@@ -103,7 +90,6 @@
                 <a href="lecturas/nds-02-contenedores-narc-y-compresion.html" class="link-download" data-editable="manual.5.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 6: NDS -->
             <div class="card-manual" data-consola="nds-3ds">
                 <div class="manual-badge nds">NDS</div>
                 <h3 data-editable="manual.6.titulo">Gráficos Nitro y Texturas 3DS</h3>
@@ -112,7 +98,6 @@
                 <a href="lecturas/nds-03-graficos-nitro.html" class="link-download" data-editable="manual.6.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 7: SWITCH -->
             <div class="card-manual" data-consola="switch">
                 <div class="manual-badge switch">SWITCH</div>
                 <h3 data-editable="manual.7.titulo">Estructura de Capas de Archivos</h3>
@@ -121,7 +106,6 @@
                 <a href="lecturas/switch-01-layeredfs.html" class="link-download" data-editable="manual.7.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 8: SWITCH -->
             <div class="card-manual" data-consola="switch">
                 <div class="manual-badge switch">SWITCH</div>
                 <h3 data-editable="manual.8.titulo">Archivos de Guardado</h3>
@@ -130,7 +114,6 @@
                 <a href="lecturas/switch-02-archivos-de-guardado.html" class="link-download" data-editable="manual.8.enlace">LEER_MANUAL_</a>
             </div>
 
-            <!-- Manual 9: SWITCH -->
             <div class="card-manual" data-consola="switch">
                 <div class="manual-badge switch">SWITCH</div>
                 <h3 data-editable="manual.9.titulo">Parches de Código IPS</h3>
@@ -141,7 +124,6 @@
         </div>
     </main>
 
-    <!-- Sección del Formulario de Contacto Real -->
     <section id="contacto" class="contact-section">
         <h2 class="section-title" data-editable="contacto.titulo">&gt;_ INTERCEPTAR_CANAL_DE_TEXTO</h2>
         <p class="contact-subtitle" data-editable="contacto.subtitulo">¿Encontraste un error hexadecimal en las traducciones o requieres documentación de un offset específico? Envía una solicitud al administrador.</p>
@@ -173,35 +155,23 @@
                 <small class="manual-meta" data-error-for="message" role="alert" hidden></small>
             </div>
 
-            <!-- Honeypot antispam: invisible y fuera del foco. Un humano nunca lo llena. -->
+            <!-- Honeypot antispam: trampa para bots. El backend debe rechazar peticiones con este campo poblado -->
             <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" hidden>
             <button type="submit" class="btn-neon" data-editable="contacto.boton">TRANSMITIR_PAQUETE</button>
 
-            <!-- Respuesta del servidor (exito / error / rate limit) -->
             <p id="form-status" class="contact-subtitle" role="status" aria-live="polite" hidden></p>
 
-            <!-- Plantilla del acuse de recibo. Es solo la FUENTE DEL TEXTO: el
-                 usuario nunca ve el historial ni los mensajes de otros. -->
+            <!-- Plantilla de texto inerte leída dinámicamente por JS tras respuesta exitosa -->
             <span data-editable="contacto.confirmacion" hidden>Paquete recibido. El administrador revisara tu solicitud.</span>
         </form>
     </section>
 
-    <!-- Footer -->
     <footer class="main-footer">
         <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
-        <!-- Acceso discreto al panel (tambien con Ctrl + Shift + A) -->
         <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
     </footer>
 
-
-    <!-- ==================================================================
-         CAPA DE ADMINISTRACION
-         Marcado inerte hasta que js/admin.js lo activa. Ocultarlo es solo
-         comodidad visual: la proteccion real es que /api/comentarios y
-         PUT /api/contenido devuelven 401 sin sesion valida en el servidor.
-         ================================================================== -->
-
-    <!-- Modal de acceso -->
+    <!-- Capa Admin DOM: la protección real la ejercen las respuestas 401 del backend (/api/*) si no existe sesión válida -->
     <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
         <div class="adm-modal">
             <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
@@ -227,7 +197,6 @@
         </div>
     </div>
 
-    <!-- Panel principal -->
     <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
         <div class="adm-panel">
 
@@ -250,7 +219,6 @@
 
             <div class="adm-body">
 
-                <!-- 1. Visor de Transmisiones (privado) -->
                 <section class="adm-view" data-vista="transmisiones" role="tabpanel">
                     <div class="adm-consola-barra">
                         <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmision(es) en registro</span>
@@ -261,7 +229,6 @@
                     <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
                 </section>
 
-                <!-- 2. Monitor de Consola -->
                 <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
                     <div class="adm-consola-barra">
                         <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
@@ -273,7 +240,6 @@
                     <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
                 </section>
 
-                <!-- 3. Editor Frontend -->
                 <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
                     <p class="adm-editor-aviso">
                         Solo se editan textos descriptivos. Los campos del formulario, sus
@@ -293,8 +259,7 @@
         </div>
     </div>
 
-    <!-- Vinculación de Lógica Interactiva (Al final para asegurar la UX) -->
-    <!-- consola.js va PRIMERO: intercepta console.* antes de que nadie lo use -->
+    <!-- consola.js DEBE cargarse antes para interceptar invocaciones a window.console antes de ejecutar los demás scripts -->
     <script src="js/consola.js?v=3"></script>
     <script src="js/main.js?v=3"></script>
     <script src="js/admin.js?v=3"></script>

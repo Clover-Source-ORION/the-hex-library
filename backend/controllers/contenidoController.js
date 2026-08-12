@@ -1,13 +1,10 @@
 'use strict';
 
+// Importa el gestor de persistencia y el modelo para manejar la edición de textos
 const { contenido } = require('../config/db');
 const Contenido = require('../models/Contenido');
 
-/**
- * GET /api/contenido  (publico)
- * Devuelve solo los textos sobrescritos. Los valores por defecto viven en el
- * HTML, asi no se duplican en dos sitios y el sitio funciona aunque la API caiga.
- */
+// Obtiene los textos personalizados guardados en la base de datos (público)
 async function obtenerContenido(req, res, next) {
   try {
     const overrides = await contenido.leer();
@@ -17,18 +14,12 @@ async function obtenerContenido(req, res, next) {
   }
 }
 
-/**
- * GET /api/contenido/esquema  (admin)
- * Lista blanca de campos editables que el panel usa para construir su formulario.
- */
+// Devuelve el esquema con los campos editables permitidos para el panel (admin)
 function obtenerEsquema(req, res) {
   return res.status(200).json({ ok: true, data: Contenido.esquema() });
 }
 
-/**
- * PUT /api/contenido  (admin)
- * Reemplaza el conjunto de overrides. Una clave vacia restaura el texto original.
- */
+// Normaliza y guarda las modificaciones de texto recibidas (admin)
 async function guardarContenido(req, res, next) {
   try {
     const limpio = Contenido.normalizar(req.body);
@@ -46,7 +37,7 @@ async function guardarContenido(req, res, next) {
   }
 }
 
-/** DELETE /api/contenido  (admin) - restaura todos los textos originales. */
+// Elimina todas las modificaciones y restaura los textos por defecto (admin)
 async function restaurarContenido(req, res, next) {
   try {
     await contenido.guardar({});
@@ -56,4 +47,5 @@ async function restaurarContenido(req, res, next) {
   }
 }
 
+// Exportación de controladores
 module.exports = { obtenerContenido, obtenerEsquema, guardarContenido, restaurarContenido };

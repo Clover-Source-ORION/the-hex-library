@@ -1,31 +1,15 @@
 'use strict';
 
-/**
- * Capa de persistencia en archivos JSON.
- *
- * Se generaliza en dos factorias:
- *  - crearColeccion: lista de registros (comentarios).
- *  - crearDocumento: un unico objeto clave/valor (overrides de contenido).
- *
- * Garantias comunes:
- *  - Escritura ATOMICA (temporal + rename): el JSON nunca queda a medias.
- *  - Cola de escritura: sin condiciones de carrera entre peticiones concurrentes.
- *  - Cache en memoria: las lecturas no tocan disco.
- *  - Ante un JSON corrupto, respalda el archivo y arranca con el valor inicial
- *    en vez de tumbar el servidor.
- *
- * Migrar a Mongo/Postgres implica reescribir solo este archivo respetando
- * las interfaces publicas.
- */
-
+// Persistencia ligera basada en archivos JSON
 const fs = require('fs/promises');
 const path = require('path');
 
+// Ruta del directorio de datos (configurable por entorno)
 const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.join(__dirname, '..', 'data');
 
-/** Lee y parsea un JSON, gestionando ausencia y corrupcion. */
+// Lee y parsea un JSON; si está corrupto crea un backup y usa el valor por defecto
 async function cargarArchivo(ruta, valorInicial, esValido) {
   try {
     const raw = await fs.readFile(ruta, 'utf8');
@@ -45,31 +29,28 @@ async function cargarArchivo(ruta, valorInicial, esValido) {
   }
 }
 
-/** Escritura atomica: se escribe un temporal y se renombra sobre el destino. */
+// Escribe mediante un archivo temporal para evitar que el JSON quede incompleto si hay un fallo
 async function escribirAtomico(ruta, datos) {
   const tmp = ruta + '.tmp';
   await fs.writeFile(tmp, JSON.stringify(datos, null, 2), 'utf8');
   await fs.rename(tmp, ruta);
 }
 
-// ============================================================================
-// Coleccion (array de registros)
-// ============================================================================
-
+// Factoría para manejar colecciones de datos en formato lista (arrays)
 function crearColeccion(nombreArchivo) {
   const ruta = path.join(DATA_DIR, nombreArchivo);
 
-  /** @type {Array<object>|null} */
   let cache = null;
   let cola = Promise.resolve();
 
+  // Verifica que la colección se haya inicializado antes de operar
   function asegurarListo() {
     if (cache === null) {
       throw new Error('[db] La coleccion ' + nombreArchivo + ' no fue inicializada.');
     }
   }
 
-  /** Encola una mutacion para serializar las escrituras. */
+  // Encola las mutaciones para evitar conflictos entre escrituras concurrentes
   function encolar(mutacion) {
     cola = cola.then(async () => {
       const resultado = mutacion();
@@ -82,6 +63,7 @@ function crearColeccion(nombreArchivo) {
   return {
     ruta,
 
+    // Prepara el directorio y carga el archivo en memoria
     async init() {
       await fs.mkdir(DATA_DIR, { recursive: true });
       cache = await cargarArchivo(ruta, [], Array.isArray);
@@ -89,19 +71,20 @@ function crearColeccion(nombreArchivo) {
       return cache.length;
     },
 
-    /** Copia ordenada por fecha descendente (mas nuevos primero). */
+    // Retorna todos los elementos ordenados por fecha de creación (los más recientes primero)
     async readAll() {
       asegurarListo();
       return cache.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
     },
 
+    // Añade un nuevo elemento a la colección y lo persiste en disco
     async insert(registro) {
       asegurarListo();
       await encolar(() => cache.push(registro));
       return registro;
     },
 
-    /** Elimina por id. Devuelve true si existia. */
+    // Elimina un registro filtrando por su identificador único
     async remove(id) {
       asegurarListo();
       return encolar(() => {
@@ -112,7 +95,7 @@ function crearColeccion(nombreArchivo) {
       });
     },
 
-    /** Vacia la coleccion. Devuelve cuantos registros se borraron. */
+    // Borra todo el contenido de la colección
     async clear() {
       asegurarListo();
       return encolar(() => {
@@ -122,11 +105,13 @@ function crearColeccion(nombreArchivo) {
       });
     },
 
+    // Cuenta cuántos registros coinciden con la función predicado
     async countBy(predicado) {
       asegurarListo();
       return cache.filter(predicado).length;
     },
 
+    // Obtiene el total de elementos almacenados
     async size() {
       asegurarListo();
       return cache.length;
@@ -134,24 +119,22 @@ function crearColeccion(nombreArchivo) {
   };
 }
 
-// ============================================================================
-// Documento (objeto clave/valor unico)
-// ============================================================================
-
+// Factoría para documentos de tipo clave/valor único (objetos)
 function crearDocumento(nombreArchivo, valorInicial) {
   const ruta = path.join(DATA_DIR, nombreArchivo);
   const inicial = valorInicial || {};
 
-  /** @type {object|null} */
   let cache = null;
   let cola = Promise.resolve();
 
+  // Comprueba que el contenido leído sea un objeto JS válido
   const esObjetoPlano = (valor) =>
     valor !== null && typeof valor === 'object' && !Array.isArray(valor);
 
   return {
     ruta,
 
+    // Prepara el archivo y su caché inicial en memoria
     async init() {
       await fs.mkdir(DATA_DIR, { recursive: true });
       cache = await cargarArchivo(ruta, Object.assign({}, inicial), esObjetoPlano);
@@ -159,12 +142,13 @@ function crearDocumento(nombreArchivo, valorInicial) {
       return Object.keys(cache).length;
     },
 
+    // Retorna una copia de los datos actuales
     async leer() {
       if (cache === null) throw new Error('[db] El documento ' + nombreArchivo + ' no fue inicializado.');
       return Object.assign({}, cache);
     },
 
-    /** Reemplaza el documento completo por uno ya validado. */
+    // Reemplaza el documento completo por nuevos datos y los guarda en disco
     async guardar(nuevo) {
       if (cache === null) throw new Error('[db] El documento ' + nombreArchivo + ' no fue inicializado.');
       cola = cola.then(async () => {
@@ -177,14 +161,11 @@ function crearDocumento(nombreArchivo, valorInicial) {
   };
 }
 
-// ============================================================================
-// Instancias de la aplicacion
-// ============================================================================
-
+// Instancias principales de la base de datos del proyecto
 const comentarios = crearColeccion('comentarios.json');
 const contenido = crearDocumento('contenido.json', {});
 
-/** Inicializa todos los almacenes. Se llama una vez al arrancar. */
+// Inicializa todos los almacenes al arrancar la aplicación
 async function initAll() {
   const totalComentarios = await comentarios.init();
   const totalOverrides = await contenido.init();

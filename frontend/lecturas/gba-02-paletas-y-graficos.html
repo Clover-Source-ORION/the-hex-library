@@ -4,28 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paletas BGR555 y tiles | The Hex Library</title>
-    <meta name="description" content="Formato de color BGR555, conversion de 8 a 5 bits por canal, organizacion de la Palette RAM y codificacion de tiles de 4 y 8 bpp.">
-    <!-- Estilos globales de la plataforma: se cargan SIN modificar -->
+    <meta name="description" content="Formato de color BGR555, conversión de 8 a 5 bits por canal, organización de la Palette RAM y codificación de tiles de 4 y 8 bpp.">
+
     <link rel="stylesheet" href="../css/style.css?v=3">
     <link rel="stylesheet" href="../css/admin.css?v=3">
-    <!-- Estilos exclusivos de la vista de lectura (encapsulados) -->
     <link rel="stylesheet" href="../css/reader.css?v=1">
-    <!-- Ajustes de visualizacion en movil: archivo aditivo, solo @media -->
     <link rel="stylesheet" href="../css/movil.css?v=1">
-    <!-- Fuente Pixel/Tech de Google Fonts -->
+
+    <!-- Fuentes externas: Fira Code y VT323 provistas por Google Fonts bajo licencia SIL Open Font License (OFL) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<!-- Encabezado / Navegación -->
     <header class="main-header">
         <div class="logo">
             <span>The Hex</span> Library
         </div>
         <nav class="main-nav">
             <ul>
+                <!-- Atributos data-editable: vinculan los nodos de texto directamente con el módulo de edición frontend en admin.js -->
                 <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
                 <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
                 <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
@@ -33,15 +32,9 @@
         </nav>
     </header>
 
-    <!-- ==================================================================
-         VISTA DE LECTURA
-         Todo el marcado de aqui abajo cuelga de .reader-page/.reader-container
-         y se estiliza unicamente desde css/reader.css.
-         ================================================================== -->
     <main class="reader-page">
         <article class="reader-container">
 
-            <!-- Encabezado tecnico del archivo -->
             <header class="reader-filecard">
                 <dl>
                     <dt>File_ID</dt>
@@ -59,16 +52,16 @@
 
             <span class="reader-tag gba">GBA</span>
             <h1>Paletas BGR555 y tiles</h1>
-            <p class="reader-lead">La Game Boy Advance no dibuja pixeles con color propio: dibuja indices que despues se traducen mediante una paleta. Entender esa indireccion es la diferencia entre reimportar un grafico correctamente y pasarse una tarde persiguiendo colores cambiados.</p>
+            <p class="reader-lead">La Game Boy Advance no dibuja píxeles con color propio: dibuja índices que después se traducen mediante una paleta. Entender esa indirección es la diferencia entre reimportar un gráfico correctamente y pasarse una tarde persiguiendo colores cambiados.</p>
 
             <details class="reader-details reader-toc" open>
-                <summary>Indice del documento</summary>
+                <summary>Índice del documento</summary>
                 <div class="reader-details-body">
                     <ol>
                         <li><a href="#bgr555">El formato de color BGR555</a></li>
-                        <li><a href="#conversion">Conversion de 8 bits por canal</a></li>
-                        <li><a href="#palram">Organizacion de la Palette RAM</a></li>
-                        <li><a href="#tiles">Tiles de 4 y 8 bits por pixel</a></li>
+                        <li><a href="#conversion">Conversión de 8 bits por canal</a></li>
+                        <li><a href="#palram">Organización de la Palette RAM</a></li>
+                        <li><a href="#tiles">Tiles de 4 y 8 bits por píxel</a></li>
                         <li><a href="#bancos">Bancos de paleta en el mapa de tiles</a></li>
                     </ol>
                 </div>
@@ -76,7 +69,12 @@
 
             <h2 id="bgr555">1. El formato de color BGR555</h2>
 
-            <p>La GBA guarda cada color en 16 bits con cinco bits por canal y el bit alto sin usar. El detalle que arruina mas conversiones caseras es el orden: no es RGB, es <strong>BGR</strong>. El rojo ocupa los bits bajos y el azul los altos, justo al reves de lo que asume la intuicion.</p>
+            <p>La GBA almacena cada color en palabras de 16 bits (2 bytes) usando 5 bits por canal cromático y dejando el bit más alto sin uso:</p>
+
+            <ul>
+                <li><strong>Estructura de bits:</strong> No utiliza el orden estándar RGB, sino <strong>BGR</strong>. El rojo ocupa los bits bajos (`0-4`), el verde los medios (`5-9`) y el azul los altos (`10-14`).</li>
+                <li><strong>Bit 15:</strong> Permanece inutilizado.</li>
+            </ul>
 
             <div class="reader-code">
                 <div class="reader-code-bar"><span>bgr555.txt</span><span>ASCII</span></div>
@@ -85,28 +83,40 @@
  | unused |      AZUL      |     VERDE    |    ROJO    |
  +--------+----------------+--------------+------------+
 
-<span class="cmt">; Ensamblado</span>
+<span class="cmt">// Ensamblado del valor de color</span>
 color = (azul &lt;&lt; 10) | (verde &lt;&lt; 5) | rojo
 
-<span class="cmt">; Extraccion</span>
+<span class="cmt">// Extracción de canales individuales</span>
 rojo  = (color &gt;&gt; 0)  &amp; 0x1F
 verde = (color &gt;&gt; 5)  &amp; 0x1F
 azul  = (color &gt;&gt; 10) &amp; 0x1F</code></pre>
             </div>
 
-            <p>Cada color ocupa dos bytes en little-endian, asi que el blanco puro <code>0x7FFF</code> aparece en el volcado como <code>FF 7F</code> y el negro como <code>00 00</code>. Esa pareja <code>FF 7F</code> suele ser el primer indicio de que has dado con una paleta al recorrer la ROM a ciegas.</p>
+            <p><strong>Representación en ROM (Little-Endian):</strong><br>
+            Cada color se almacena invertido byte a byte. Por ejemplo:</p>
+            <ul>
+                <li><strong>Blanco puro</strong> (<code>0x7FFF</code>): Se graba en la ROM como <code>FF 7F</code>.</li>
+                <li><strong>Negro puro</strong> (<code>0x0000</code>): Se graba como <code>00 00</code>.</li>
+            </ul>
+            <p>Encontrar la pareja <code>FF 7F</code> al examinar un volcado hexadecimal suele ser la primera pista visual de que has localizado una paleta.</p>
 
-            <h2 id="conversion">2. Conversion de 8 bits por canal</h2>
+            <h2 id="conversion">2. Conversión de 8 bits por canal</h2>
 
-            <p>Pasar de un PNG de 24 bits a BGR555 es descartar los tres bits bajos de cada canal. La vuelta no es un simple desplazamiento a la izquierda: eso dejaria el blanco en 248 en lugar de 255 y las imagenes saldrian sistematicamente apagadas. La replicacion de bits altos corrige el rango:</p>
+            <p>Al convertir una imagen PNG estándar de 24 bits a BGR555 se descartan los 3 bits menos significativos de cada canal. Sin embargo, la conversión inversa requiere **replicación de bits altos** para no perder rango dinámico:</p>
+
+            <ul>
+                <li><strong>Conversión de 8 a 5 bits:</strong> Se desplaza 3 bits a la derecha (se descarta información).</li>
+                <li><strong>Conversión de 5 a 8 bits (correcta):</strong> Replica los bits superiores en los bits vacíos inferiores. Esto escala el valor máximo de 31 directamente a 255 (blanco puro).</li>
+                <li><strong>Conversión de 5 a 8 bits (ingenua):</strong> Un simple desplazamiento <code>v5 &lt;&lt; 3</code> deja el blanco máximo en 248, provocando que las imágenes se vean apagadas.</li>
+            </ul>
 
             <div class="reader-table-wrap">
                 <table class="reader-table">
                     <caption>Correspondencia de valores por canal</caption>
                     <thead>
                         <tr>
-                            <th scope="col">Operacion</th>
-                            <th scope="col">Formula</th>
+                            <th scope="col">Operación</th>
+                            <th scope="col">Fórmula</th>
                             <th scope="col">Entrada</th>
                             <th scope="col">Salida</th>
                         </tr>
@@ -135,65 +145,82 @@ azul  = (color &gt;&gt; 10) &amp; 0x1F</code></pre>
             </div>
 
             <div class="reader-callout aviso">
-                <span class="reader-callout-title">Ida y vuelta</span>
-                <p>La conversion de 8 a 5 bits pierde informacion de forma irreversible. Reimportar un grafico exportado varias veces va degradando los colores en cada ciclo. Trabaja siempre desde el original de 24 bits, no desde el PNG que exporto tu editor la vez anterior.</p>
+                <span class="reader-callout-title">Degradación por ida y vuelta</span>
+                <p>La conversión de 8 a 5 bits pierde información de forma irreversible. Exportar e reimportar un gráfico repetidamente degrada los colores en cada ciclo. Trabaja siempre editando sobre el archivo original de 24 bits, nunca sobre las imágenes exportadas por tu herramienta.</p>
             </div>
 
-            <h2 id="palram">3. Organizacion de la Palette RAM</h2>
+            <h2 id="palram">3. Organización de la Palette RAM</h2>
 
-            <p>El KiB que hay en <code>0x05000000</code> se reparte en dos mitades exactas: fondos primero, sprites despues. En modo de 4 bits por pixel cada mitad se lee como 16 paletas de 16 colores; en 8 bpp, como una unica paleta de 256.</p>
+            <p>La memoria de paleta de la consola ocupa 1 KiB ubicado en <code>0x05000000</code> y se divide exactamente a la mitad:</p>
+
+            <ul>
+                <li><strong>Primeros 512 bytes:</strong> Paletas para Fondos (BG).</li>
+                <li><strong>Segundos 512 bytes:</strong> Paletas para Sprites / Objetos (OBJ).</li>
+            </ul>
 
             <div class="reader-table-wrap">
                 <table class="reader-table">
                     <caption>Reparto de los 1024 bytes de paleta</caption>
                     <thead>
                         <tr>
-                            <th scope="col">Rango</th>
+                            <th scope="col">Rango de memoria</th>
                             <th scope="col">Contenido</th>
-                            <th scope="col">Lectura en 4 bpp</th>
+                            <th scope="col">Lectura en modo 4 bpp</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="addr">0x05000000 - 0x050001FF</td>
+                            <td class="addr"><code>0x05000000</code> - <code>0x050001FF</code></td>
                             <td>Paletas de fondo (BG)</td>
-                            <td class="meta">16 bancos de 16 colores, 32 B cada uno</td>
+                            <td class="meta">16 bancos de 16 colores (32 B cada uno)</td>
                         </tr>
                         <tr>
-                            <td class="addr">0x05000200 - 0x050003FF</td>
+                            <td class="addr"><code>0x05000200</code> - <code>0x050003FF</code></td>
                             <td>Paletas de objetos (OBJ)</td>
-                            <td class="meta">16 bancos de 16 colores, 32 B cada uno</td>
+                            <td class="meta">16 bancos de 16 colores (32 B cada uno)</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <p>El indice 0 de cada banco de 16 es siempre transparente cuando se dibuja un sprite o un tile de fondo con prioridad. No lo uses para un color que necesites ver: el hardware lo descarta antes de llegar al mezclador. La unica excepcion es el color 0 del banco 0 de fondos, que actua como color de relleno de la pantalla.</p>
+            <p><strong>Reglas clave sobre el Índice 0:</strong></p>
+            <ul>
+                <li><strong>Transparencia:</strong> En cualquier banco de 16 colores (4 bpp), el <strong>índice 0 es transparente</strong> para objetos y capas de fondo prioritaris. No asignes ahí un color visible.</li>
+                <li><strong>Excepción (Color de fondo global):</strong> El <strong>color 0 del banco 0 de fondos</strong> es especial: define el color base con el que se rellena toda la pantalla cuando no hay capas dibujadas encima.</li>
+            </ul>
 
-            <h2 id="tiles">4. Tiles de 4 y 8 bits por pixel</h2>
+            <h2 id="tiles">4. Tiles de 4 y 8 bits por píxel</h2>
 
-            <p>Todo el sistema grafico se construye sobre baldosas de 8x8 pixeles. En 4 bpp cada tile ocupa 32 bytes; en 8 bpp, 64. El orden de lectura es por filas, de arriba a abajo y de izquierda a derecha, pero dentro de cada byte de 4 bpp los nibbles van invertidos: <strong>el nibble bajo es el pixel de la izquierda</strong>.</p>
+            <p>El motor gráfico procesa la imagen en baldosas cuadradas llamadas <strong>tiles de 8x8 píxeles</strong>:</p>
+
+            <ul>
+                <li><strong>Modo 4 bpp (16 colores):</strong> Ocupa <strong>32 bytes</strong> por tile.</li>
+                <li><strong>Modo 8 bpp (256 colores):</strong> Ocupa <strong>64 bytes</strong> por tile.</li>
+            </ul>
+
+            <p><strong>Ordenamiento de nibbles en 4 bpp:</strong><br>
+            Los píxeles se leen de izquierda a derecha y de arriba a abajo. Sin embargo, dentro de cada byte en modo 4 bpp los nibbles (medios bytes) están invertidos: <strong>el nibble bajo corresponde al píxel izquierdo</strong> y el <strong>nibble alto al píxel derecho</strong>.</p>
 
             <div class="reader-code">
                 <div class="reader-code-bar"><span>tile 4bpp — primera fila</span><span>HEX</span></div>
-                <pre><code>bytes:   <span class="key">21</span> <span class="key">43</span> <span class="key">65</span> <span class="key">87</span>
-pixels:   1  2  3  4  5  6  7  8
-          ^  ^
-          |  +-- nibble alto  = segundo pixel
-          +----- nibble bajo  = primer pixel
+                <pre><code>Bytes en ROM:   <span class="key">21</span> <span class="key">43</span> <span class="key">65</span> <span class="key">87</span>
+Píxeles:        1  2  3  4  5  6  7  8
+                ^  ^
+                |  +-- Nibble alto  = Segundo píxel (derecha)
+                +----- Nibble bajo  = Primer píxel (izquierda)
 
-<span class="cmt">; Extraccion de la fila completa</span>
+<span class="cmt">// Extracción lógica de la fila completa</span>
 for (i = 0; i &lt; 4; i++) {
     izq = bytes[i] &amp; 0x0F;
     der = bytes[i] &gt;&gt; 4;
 }</code></pre>
             </div>
 
-            <p>Ese cruce de nibbles es la causa numero uno de los graficos que salen "en zigzag" o con las columnas pares e impares intercambiadas. Si tu volcado parece correcto pero la imagen esta trenzada, intercambia los nibbles antes de sospechar del offset.</p>
+            <p><em>Error frecuente:</em> Este cruce de nibbles es la causa principal de gráficos que se ven "en zigzag" o con las columnas pares e impares intercambiadas. Si el gráfico se ve distorsionado de esta forma, invierte los nibbles antes de asumir que el offset es incorrecto.</p>
 
             <h2 id="bancos">5. Bancos de paleta en el mapa de tiles</h2>
 
-            <p>En 4 bpp un tile solo tiene 16 colores, pero la pantalla puede mostrar 256 a la vez porque cada entrada del mapa de fondo lleva su propio numero de banco. La entrada mide 16 bits:</p>
+            <p>En modo 4 bpp, un tile solo puede acceder a 16 colores. Para mostrar 256 colores simultáneos en pantalla, cada entrada del mapa de fondo especifica qué banco de paleta debe usar. Cada entrada mide 16 bits:</p>
 
             <div class="reader-table-wrap">
                 <table class="reader-table">
@@ -202,58 +229,66 @@ for (i = 0; i &lt; 4; i++) {
                         <tr>
                             <th scope="col">Bits</th>
                             <th scope="col">Campo</th>
-                            <th scope="col">Descripcion</th>
+                            <th scope="col">Descripción</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="addr">0 - 9</td>
-                            <td>Indice de tile</td>
-                            <td class="meta">Cual de los 1024 tiles del bloque se dibuja</td>
+                            <td class="addr"><code>0 - 9</code></td>
+                            <td>Índice de tile</td>
+                            <td class="meta">Indica cuál de los 1024 tiles del bloque se debe dibujar.</td>
                         </tr>
                         <tr>
-                            <td class="addr">10</td>
-                            <td>Volteo horizontal</td>
-                            <td class="meta">Espeja el tile en X sin gastar VRAM</td>
+                            <td class="addr"><code>10</code></td>
+                            <td>Volteo horizontal (X)</td>
+                            <td class="meta">Espeja el tile horizontalmente sin consumir VRAM.</td>
                         </tr>
                         <tr>
-                            <td class="addr">11</td>
-                            <td>Volteo vertical</td>
-                            <td class="meta">Espeja el tile en Y</td>
+                            <td class="addr"><code>11</code></td>
+                            <td>Volteo vertical (Y)</td>
+                            <td class="meta">Espeja el tile verticalmente.</td>
                         </tr>
                         <tr>
-                            <td class="addr">12 - 15</td>
+                            <td class="addr"><code>12 - 15</code></td>
                             <td>Banco de paleta</td>
-                            <td class="meta">Cual de los 16 bancos colorea el tile (solo 4 bpp)</td>
+                            <td class="meta">Selecciona cuál de los 16 bancos asigna color al tile (solo en 4 bpp).</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
             <details class="reader-details">
-                <summary>Por que un grafico reimportado aparece con los colores cambiados</summary>
+                <summary>Causas y soluciones: Colores cambiados al reimportar gráficos</summary>
                 <div class="reader-details-body">
-                    <p>Al reimportar un PNG, la mayoria de los editores reconstruyen la paleta ordenando los colores por frecuencia de aparicion o por luminancia. El resultado es correcto en aislado, pero los indices ya no coinciden con los que espera el juego.</p>
-                    <p>Los sintomas son reconocibles: el sprite se ve bien en el editor y mal en el emulador, o los colores estan bien pero repartidos entre los elementos equivocados. La solucion es siempre la misma: fija la paleta original antes de exportar y edita el PNG en modo indexado, sin permitir que el programa de dibujo la reordene.</p>
-                    <p>Cuidado especial con el indice 0. Si tu editor lo desplaza, todo lo que era transparente pasa a dibujarse y viceversa.</p>
+                    <p><strong>El problema:</strong> Al reimportar un archivo PNG, los editores gráficos suelen reorganizar la paleta ordenando los colores por frecuencia o brillo. Aunque el archivo PNG se vea correcto, los índices numéricos de los píxeles ya no coincidirán con los que espera la ROM.</p>
+                    
+                    <p><strong>Síntomas habituales:</strong></p>
+                    <ul>
+                        <li>El sprite se ve bien en el editor pero distorsionado/mal coloreado en el emulador.</li>
+                        <li>Los colores son correctos pero están aplicados en las partes equivocadas del gráfico.</li>
+                    </ul>
+
+                    <p><strong>La solución:</strong> Fija la paleta original antes de exportar y edita la imagen siempre en <strong>modo indexado</strong>. No permitas que el software de edición reordene la tabla de colores.</p>
+
+                    <p><em>Atención con el Índice 0:</em> Si tu programa desplaza el color transparente de la posición 0 a otra casilla, todo lo que debía ser transparente se dibujará opaco y viceversa.</p>
                 </div>
             </details>
 
             <div class="reader-callout dato">
-                <span class="reader-callout-title">Comprobacion rapida</span>
-                <p>Un banco de 4 bpp mide exactamente 32 bytes. Si al volcar una paleta te salen 34 o 30, no has encontrado el inicio real: retrocede hasta que el primer color caiga en una direccion multiplo de 32 dentro de la Palette RAM.</p>
-                </div>
+                <span class="reader-callout-title">Comprobación rápida de alineación</span>
+                <p>Un banco de paleta de 4 bpp ocupa exactamente <strong>32 bytes</strong>. Si al extraer una paleta obtienes un bloque de 30 o 34 bytes, no has localizado la dirección base correcta: retrocede en la ROM hasta que el primer byte de color coincida con una dirección múltiplo de 32 dentro de la Palette RAM.</p>
+            </div>
 
             <footer class="reader-footer">
                 <h2 id="referencias">Referencias</h2>
                 <ul class="reader-sources">
                     <li>GBATEK, secciones de LCD Video Controller y OBJ (Martin Korth).</li>
-                    <li>Tonc, capitulos de graficos en modo tile y sprites (Jasper Vijn).</li>
+                    <li>Tonc, capítulos de gráficos en modo tile y sprites (Jasper Vijn).</li>
                 </ul>
 
-                <nav class="reader-nav" aria-label="Navegacion entre documentos">
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
                     <a href="gba-01-mapa-de-memoria.html">&lt;&lt; Mapa de memoria</a>
-                    <a href="../index.html#catalogo" class="volver">Volver al catalogo</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
                     <a href="gba-03-cabecera-de-cartucho.html">Cabecera del cartucho &gt;&gt;</a>
                 </nav>
 
@@ -263,26 +298,17 @@ for (i = 0; i &lt; 4; i++) {
         </article>
     </main>
 
-<!-- Footer -->
     <footer class="main-footer">
         <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
-        <!-- Acceso discreto al panel (tambien con Ctrl + Shift + A) -->
         <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
     </footer>
 
+    <!-- Capa de administración: estructura de modales y paneles requerida dinámicamente por admin.js para inyección de eventos y control de estado -->
 
-    <!-- ==================================================================
-         CAPA DE ADMINISTRACION
-         Marcado inerte hasta que js/admin.js lo activa. Ocultarlo es solo
-         comodidad visual: la proteccion real es que /api/comentarios y
-         PUT /api/contenido devuelven 401 sin sesion valida en el servidor.
-         ================================================================== -->
-
-    <!-- Modal de acceso -->
     <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
         <div class="adm-modal">
             <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
-            <p class="adm-hint">Autenticacion requerida para el modulo de administracion.</p>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
 
             <form id="adm-login-form" class="contact-form" novalidate>
                 <div class="form-group">
@@ -304,7 +330,6 @@ for (i = 0; i &lt; 4; i++) {
         </div>
     </div>
 
-    <!-- Panel principal -->
     <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
         <div class="adm-panel">
 
@@ -327,10 +352,9 @@ for (i = 0; i &lt; 4; i++) {
 
             <div class="adm-body">
 
-                <!-- 1. Visor de Transmisiones (privado) -->
                 <section class="adm-view" data-vista="transmisiones" role="tabpanel">
                     <div class="adm-consola-barra">
-                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmision(es) en registro</span>
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
                         <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
                         <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
                     </div>
@@ -338,7 +362,6 @@ for (i = 0; i &lt; 4; i++) {
                     <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
                 </section>
 
-                <!-- 2. Monitor de Consola -->
                 <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
                     <div class="adm-consola-barra">
                         <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
@@ -350,11 +373,10 @@ for (i = 0; i &lt; 4; i++) {
                     <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
                 </section>
 
-                <!-- 3. Editor Frontend -->
                 <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
                     <p class="adm-editor-aviso">
                         Solo se editan textos descriptivos. Los campos del formulario, sus
-                        atributos name/id, los valores de las categorias y los identificadores
+                        atributos name/id, los valores de las categorías y los identificadores
                         internos quedan fuera del alcance del editor: el servidor rechaza
                         cualquier clave ajena a la lista blanca.
                     </p>
@@ -370,8 +392,7 @@ for (i = 0; i &lt; 4; i++) {
         </div>
     </div>
 
-    <!-- Vinculación de Lógica Interactiva (Al final para asegurar la UX) -->
-    <!-- consola.js va PRIMERO: intercepta console.* antes de que nadie lo use -->
+    <!-- Scripts de la plataforma: deben cargarse secuencialmente para garantizar las dependencias de inicialización entre consola.js, main.js y la gestión de sesión en admin.js -->
     <script src="../js/consola.js?v=3"></script>
     <script src="../js/main.js?v=3"></script>
     <script src="../js/admin.js?v=3"></script>

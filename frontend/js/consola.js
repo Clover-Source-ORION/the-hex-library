@@ -1,26 +1,14 @@
-/**
- * THE HEX LIBRARY - Interceptor de consola
- * ----------------------------------------------------------------------------
- * Debe cargarse ANTES que cualquier otro script para no perder los mensajes
- * emitidos durante el arranque.
- *
- * Envuelve console.log/info/warn/error/debug guardando cada llamada en un
- * buffer circular en memoria. Los metodos nativos se siguen invocando siempre,
- * de modo que las DevTools del navegador funcionan exactamente igual que antes.
- *
- * El buffer es solo de lectura para el panel de administracion; no se envia a
- * ningun servidor ni se persiste, porque un log puede contener datos sensibles.
- */
+// Interceptor de logs para registrar la consola del navegador en memoria
 (function () {
   'use strict';
 
+  // Configuración de almacenamiento y control de estado
   var MAX_ENTRADAS = 500;
-
   var buffer = [];
   var suscriptores = [];
   var contador = 0;
 
-  /** Convierte cualquier argumento en texto legible sin romperse con ciclos. */
+  // Convierte cualquier tipo de dato a texto de forma segura sin romper por ciclos
   function aTexto(valor) {
     if (typeof valor === 'string') return valor;
     if (valor instanceof Error) return valor.name + ': ' + valor.message;
@@ -45,6 +33,7 @@
     return String(valor);
   }
 
+  // Almacena la entrada en el buffer y notifica a los suscriptores activos
   function registrar(nivel, args) {
     contador += 1;
 
@@ -62,11 +51,12 @@
       try {
         suscriptores[i](entrada);
       } catch (error) {
-        /* Un suscriptor roto no debe romper el logging. */
+        // Omite fallos en suscriptores para no bloquear el flujo
       }
     }
   }
 
+  // Reemplaza los métodos de console conservando las llamadas nativas
   var NIVELES = ['log', 'info', 'warn', 'error', 'debug'];
   var nativos = {};
 
@@ -79,7 +69,7 @@
     };
   });
 
-  // Errores no capturados y promesas rechazadas tambien entran al monitor.
+  // Captura errores globales no controlados y promesas rechazadas
   window.addEventListener('error', function (evento) {
     registrar('error', [
       'Excepcion no capturada: ' + (evento.message || '') +
@@ -91,14 +81,12 @@
     registrar('error', ['Promesa rechazada sin manejar: ' + aTexto(evento.reason)]);
   });
 
-  /** API interna consumida por el panel de administracion. */
+  // API pública expuesta para administrar y consultar el historial
   window.HexConsola = {
-    /** Copia del buffer actual. */
     historial: function () {
       return buffer.slice();
     },
 
-    /** Suscribe un callback a las nuevas entradas. Devuelve la funcion de baja. */
     suscribir: function (callback) {
       suscriptores.push(callback);
       return function desuscribir() {
@@ -107,12 +95,10 @@
       };
     },
 
-    /** Vacia el buffer (no toca la consola del navegador). */
     limpiar: function () {
       buffer.length = 0;
     },
 
-    /** Restaura los metodos nativos. Util para depurar el propio interceptor. */
     restaurar: function () {
       NIVELES.forEach(function (nivel) {
         console[nivel] = nativos[nivel];

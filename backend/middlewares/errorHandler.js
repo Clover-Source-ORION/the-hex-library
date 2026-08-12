@@ -1,11 +1,8 @@
 'use strict';
 
-/**
- * Manejo centralizado de errores + utilidades de seguridad.
- * Ningun controlador responde errores por su cuenta: todos delegan con next(error).
- */
+// Middleware global de seguridad y manejo centralizado de errores
 
-/** Cabeceras de seguridad basicas (equivalente minimo a helmet, sin dependencia). */
+// Configura cabeceras HTTP de seguridad (CSP, anti-clickjacking) y remueve la identificación del servidor
 function securityHeaders(req, res, next) {
   res.set('X-Content-Type-Options', 'nosniff');
   res.set('X-Frame-Options', 'DENY');
@@ -30,7 +27,7 @@ function securityHeaders(req, res, next) {
   next();
 }
 
-/** Captura JSON malformado antes de que llegue a los controladores. */
+// Intercepta errores de sintaxis en el JSON enviado por el cliente
 function jsonSyntaxError(err, req, res, next) {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({ ok: false, mensaje: 'El JSON enviado esta malformado.' });
@@ -38,12 +35,12 @@ function jsonSyntaxError(err, req, res, next) {
   return next(err);
 }
 
-/** 404 para rutas de API inexistentes. */
+// Devuelve respuesta 404 para endpoints o rutas no registradas
 function notFound(req, res) {
   res.status(404).json({ ok: false, mensaje: `Ruta no encontrada: ${req.method} ${req.originalUrl}` });
 }
 
-/** Handler final. Nunca filtra stack traces al cliente en produccion. */
+// Manejador global para capturar, registrar y estructurar la respuesta de cualquier error
 function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
   const status = err.status || err.statusCode || 500;
 
@@ -68,4 +65,5 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
   res.status(status).json(cuerpo);
 }
 
+// Exportación de middlewares
 module.exports = { securityHeaders, jsonSyntaxError, notFound, errorHandler };

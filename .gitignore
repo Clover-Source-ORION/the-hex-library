@@ -85,9 +85,6 @@ dist
 
 # Gatsby files
 .cache/
-# Comment in the public line in if your project uses Gatsby and not Next.js
-# https://nextjs.org/blog/next-9-1#public-directory-support
-# public
 
 # vuepress build output
 .vuepress/dist
@@ -142,18 +139,24 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-# --- The Hex Library ---
-# Basura de macOS (venia versionada en el repo)
+# ==========================================
+# ------ The Hex Library Custom Rules ------
+# ==========================================
+
+# Basura de sistema (macOS / Windows)
 .DS_Store
 **/.DS_Store
 __MACOSX/
+Thumbs.db
 
-# Datos persistidos en local (no deben ir al repositorio)
+# Datos persistidos en local (base de datos / JSONs)
 backend/data/*.json
 backend/data/contenido.json
 backend/data/*.tmp
 backend/data/*.corrupt-*
 
-# Variables de entorno
-.env
+# Variables de entorno específicas del entorno local
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local

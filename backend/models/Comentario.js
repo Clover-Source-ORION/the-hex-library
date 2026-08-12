@@ -1,15 +1,9 @@
 'use strict';
 
-/**
- * Modelo de dominio "Comentario".
- *
- * Concentra las reglas de validacion y sanitizacion. El controlador NUNCA confia
- * en el body crudo: todo pasa por `Comentario.crear()`.
- */
-
+// Importación del módulo criptográfico nativo de Node.js
 const crypto = require('crypto');
 
-/** Categorias permitidas: deben coincidir con los <option value> del formulario. */
+// Constantes con categorías válidas y límites de longitud para cada campo
 const TOPICS_VALIDOS = Object.freeze(['error', 'request', 'bug']);
 
 const LIMITES = Object.freeze({
@@ -18,19 +12,14 @@ const LIMITES = Object.freeze({
   message: { min: 10, max: 2000 }
 });
 
-/** Nombre: letras (con acentos), digitos, espacio y - _ . */
+// Expresiones regulares para validar formato de nombre y correo
 const RE_NOMBRE = /^[\p{L}\p{N} _.\-]+$/u;
-
-/** Validacion de correo pragmatica: un @, sin espacios, dominio con punto. */
 const RE_EMAIL = /^[^\s@<>"'`;]+@[^\s@<>"'`;.]+\.[^\s@<>"'`;]{2,}$/;
 
-/** Claves peligrosas que podrian contaminar el prototipo al hacer merge de objetos. */
+// Lista de propiedades reservadas para evitar contaminación de prototipos
 const CLAVES_PROHIBIDAS = new Set(['__proto__', 'constructor', 'prototype']);
 
-/**
- * Error de validacion con detalle por campo, para que el front pueda pintar
- * mensajes especificos.
- */
+// Clase personalizada para estructurar y devolver errores de validación
 class ValidationError extends Error {
   constructor(errores) {
     super('Los datos enviados no superaron la validacion.');
@@ -40,15 +29,7 @@ class ValidationError extends Error {
   }
 }
 
-/**
- * Sanitizacion de texto plano.
- * - Fuerza el tipo string (bloquea inyeccion por objetos/arrays tipo {"$gt":""}).
- * - Normaliza Unicode (evita bypass de filtros con formas compuestas).
- * - Elimina caracteres de control y BOM.
- * - Neutraliza etiquetas HTML: se quitan por completo en vez de escaparlas,
- *   asi el dato guardado es texto puro y no depende de como se pinte despues.
- * - Colapsa espacios y recorta.
- */
+// Sanitiza cadenas de texto eliminando etiquetas HTML, caracteres de control y normalizando Unicode
 function sanitizarTexto(valor, { maxLen = 5000 } = {}) {
   if (typeof valor !== 'string') return '';
 
@@ -64,7 +45,7 @@ function sanitizarTexto(valor, { maxLen = 5000 } = {}) {
     .slice(0, maxLen);
 }
 
-/** Rechaza payloads que no sean objetos planos o que traigan claves peligrosas. */
+// Verifica que el payload sea un objeto JSON plano y carezca de claves maliciosas
 function asegurarObjetoPlano(payload) {
   if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new ValidationError({ _global: 'El cuerpo de la peticion debe ser un objeto JSON.' });
@@ -77,13 +58,7 @@ function asegurarObjetoPlano(payload) {
   }
 }
 
-/**
- * Valida y construye un comentario listo para persistir.
- * @param {object} payload cuerpo crudo de la peticion
- * @param {{ip?: string}} meta metadatos del servidor (no provienen del cliente)
- * @returns {object} registro sanitizado
- * @throws {ValidationError}
- */
+// Valida, sanitiza y construye la estructura completa del registro de comentario
 function crear(payload, meta = {}) {
   asegurarObjetoPlano(payload);
 
@@ -127,16 +102,11 @@ function crear(payload, meta = {}) {
     topic,
     message,
     createdAt: new Date().toISOString(),
-    // Hash del IP: permite detectar abuso sin almacenar el dato personal en claro.
     ipHash: meta.ip ? crypto.createHash('sha256').update(String(meta.ip)).digest('hex').slice(0, 16) : null
   };
 }
 
-/**
- * Proyeccion publica. Ya no se usa en ninguna ruta abierta (el registro dejo de
- * ser visible para el usuario comun), pero se conserva como unica definicion de
- * "que campos serian seguros de publicar" si alguna vez se expone un feed.
- */
+// Proyección de datos para respuestas públicas (excluye correo e IP)
 function aPublico(registro) {
   return {
     id: registro.id,
@@ -147,11 +117,7 @@ function aPublico(registro) {
   };
 }
 
-/**
- * Proyeccion privada para el panel de administracion: incluye el correo para
- * poder responder. El hash de IP se recorta y se marca como tal; nunca se
- * expone una direccion IP en claro.
- */
+// Proyección de datos para el panel administrativo (incluye correo y hash de IP)
 function aPrivado(registro) {
   return {
     id: registro.id,
@@ -164,4 +130,5 @@ function aPrivado(registro) {
   };
 }
 
+// Exportación del modelo y utilidades asociadas
 module.exports = { crear, aPublico, aPrivado, sanitizarTexto, ValidationError, TOPICS_VALIDOS, LIMITES };

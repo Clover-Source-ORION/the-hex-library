@@ -1,13 +1,12 @@
 'use strict';
 
+// Importa las utilidades y configuración de autenticación
 const auth = require('../config/auth');
 
-/**
- * POST /api/admin/login
- * Verifica credenciales y emite la cookie de sesion firmada.
- */
+// Controlador para procesar el inicio de sesión del administrador
 function login(req, res, next) {
   try {
+    // Sanitiza y valida las entradas recibidas en el cuerpo de la petición
     const usuario = typeof req.body?.usuario === 'string' ? req.body.usuario.trim() : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
@@ -15,11 +14,12 @@ function login(req, res, next) {
       return res.status(400).json({ ok: false, mensaje: 'Usuario y contrasena son obligatorios.' });
     }
 
+    // Verifica que el usuario y la contraseña coincidan con los datos esperados
     if (!auth.verificarCredenciales(usuario, password)) {
-      // Mensaje generico: no se revela cual de los dos campos fallo.
       return res.status(401).json({ ok: false, mensaje: 'Credenciales invalidas. Acceso denegado.' });
     }
 
+    // Genera el token y configura la cookie HTTP de la sesión
     auth.ponerCookieSesion(res, auth.crearToken(usuario));
 
     return res.status(200).json({
@@ -32,16 +32,13 @@ function login(req, res, next) {
   }
 }
 
-/** POST /api/admin/logout */
+// Controlador para cerrar la sesión activa del usuario
 function logout(req, res) {
   auth.borrarCookieSesion(res);
   return res.status(200).json({ ok: true, mensaje: 'Sesion cerrada.' });
 }
 
-/**
- * GET /api/admin/session
- * Permite al frontend saber si debe pintar el panel tras recargar la pagina.
- */
+// Controlador para verificar si la sesión sigue válida al recargar la interfaz
 function sesion(req, res) {
   const activa = auth.sesionDe(req);
 
@@ -51,4 +48,5 @@ function sesion(req, res) {
   });
 }
 
+// Exportación de los controladores de autenticación
 module.exports = { login, logout, sesion };

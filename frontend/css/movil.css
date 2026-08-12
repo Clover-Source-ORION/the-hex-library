@@ -1,30 +1,7 @@
-/* ==========================================================================
-   THE HEX LIBRARY — AJUSTES DE VISUALIZACION EN MOVIL
-   --------------------------------------------------------------------------
-   ARCHIVO ADITIVO. No modifica ni una linea de style.css, admin.css o
-   reader.css: se carga DESPUES que ellos y solo reajusta medidas dentro de
-   consultas @media. En pantallas de mas de 768px este archivo no aplica una
-   sola regla, asi que la version de escritorio queda exactamente igual.
-
-   Ningun selector nuevo. Solo se reajustan los que ya existen en el proyecto.
-   ========================================================================== */
-
-
-/* ==========================================================================
-   1. MOVIL Y TABLET VERTICAL  (hasta 768px)
-   ========================================================================== */
+/* --- Dispositivos móviles y tablets verticales (hasta 768px) --- */
 @media (max-width: 768px) {
 
-    /* ----------------------------------------------------------------------
-       1.1 CONTENCION HORIZONTAL
-
-       El problema real: los titulos de seccion son cadenas sin espacios
-       ("INTERCEPTAR_CANAL_DE_TEXTO") en una tipografia de 2.5rem. No hay punto
-       donde partir la linea, asi que el bloque medida 626px sobre una pantalla
-       de 390px y arrastraba TODA la pagina a un scroll lateral de 646px.
-       El overflow-x: hidden de body ocultaba el desbordamiento, pero el texto
-       seguia cortado a media palabra.
-       ---------------------------------------------------------------------- */
+    /* Control de desbordamiento horizontal y desbordamiento de texto */
     html,
     body {
         max-width: 100%;
@@ -37,8 +14,8 @@
     .form-group label,
     .adm-panel-head h2,
     .adm-modal h2 {
-        overflow-wrap: anywhere;   /* permite partir un token sin espacios */
-        word-break: break-word;    /* respaldo para navegadores antiguos */
+        overflow-wrap: anywhere;
+        word-break: break-word;
         hyphens: none;
     }
 
@@ -48,14 +25,7 @@
         margin-bottom: 2rem;
     }
 
-
-    /* ----------------------------------------------------------------------
-       1.2 CABECERA
-
-       Ocupaba 132px de alto (16% de la pantalla) y ademas es sticky, asi que
-       ese espacio se perdia durante todo el scroll. Se compacta y los enlaces
-       pasan a tener area tactil real.
-       ---------------------------------------------------------------------- */
+    /* Cabecera, logo y menú de navegación táctil */
     .main-header {
         padding: 0.75rem 1rem 0.5rem;
         gap: 0.4rem;
@@ -76,8 +46,6 @@
         justify-content: center;
     }
 
-    /* 44px es el minimo recomendado para un objetivo tactil. Los enlaces
-       median 18px de alto: se fallaba el toque constantemente. */
     .main-nav a {
         display: flex;
         align-items: center;
@@ -85,12 +53,9 @@
         padding: 0 0.9rem;
     }
 
-
-    /* ----------------------------------------------------------------------
-       1.3 PORTADA
-       ---------------------------------------------------------------------- */
+    /* Sección principal o portada */
     .hero {
-        min-height: auto;          /* el 70vh forzaba un hueco vacio enorme */
+        min-height: auto;
         padding: 3rem 1.25rem;
     }
 
@@ -102,16 +67,11 @@
     }
 
     .hero p {
-        text-align: left;          /* el centrado picaba el texto en 8 lineas */
+        text-align: left;
         margin-bottom: 2rem;
     }
 
-
-    /* ----------------------------------------------------------------------
-       1.4 BOTON NEON
-       A pantalla completa es mas facil de pulsar y evita que el texto largo
-       del boton desborde su propio borde.
-       ---------------------------------------------------------------------- */
+    /* Botón principal ajustado a ancho completo */
     .btn-neon {
         display: block;
         width: 100%;
@@ -121,13 +81,7 @@
         letter-spacing: 1px;
     }
 
-
-    /* ----------------------------------------------------------------------
-       1.5 CATALOGO Y FILTROS
-
-       Los cuatro botones de filtro se reparten en dos columnas: entran sin
-       apretarse y cada uno conserva los 44px de alto.
-       ---------------------------------------------------------------------- */
+    /* Catálogo de manuales, filtros y tarjetas a una columna */
     .catalog-section {
         padding: 3rem 1.25rem;
     }
@@ -145,7 +99,7 @@
     }
 
     .grid-manuales {
-        grid-template-columns: 1fr;   /* una ficha por fila */
+        grid-template-columns: 1fr;
         gap: 1.25rem;
     }
 
@@ -158,8 +112,6 @@
         line-height: 1.35;
     }
 
-    /* El min-height de 70px dejaba huecos en blanco bajo las descripciones
-       cortas cuando las fichas ya no comparten fila. */
     .manual-desc {
         min-height: 0;
         margin-bottom: 1.25rem;
@@ -171,13 +123,7 @@
         min-height: 44px;
     }
 
-
-    /* ----------------------------------------------------------------------
-       1.6 FORMULARIO DE CONTACTO
-
-       16px en los campos NO es capricho: iOS hace zoom automatico al enfocar
-       un input con letra menor, y al hacerlo descuadra toda la maquetacion.
-       ---------------------------------------------------------------------- */
+    /* Formulario de contacto y tamaño de letra anti-zoom móvil */
     .contact-section {
         padding: 3rem 1.25rem;
     }
@@ -198,10 +144,7 @@
         min-height: 140px;
     }
 
-
-    /* ----------------------------------------------------------------------
-       1.7 PIE
-       ---------------------------------------------------------------------- */
+    /* Pie de página y botón de administración */
     .main-footer {
         padding: 2.5rem 1.25rem;
     }
@@ -214,15 +157,7 @@
         padding: 10px 16px;
     }
 
-
-    /* ----------------------------------------------------------------------
-       1.8 CAPA DE ADMINISTRACION
-
-       El modal tiene max-width: 420px. Con el desbordamiento de la 1.1 el
-       navegador ensanchaba el viewport de maquetacion a 646px y el modal se
-       salia de la pantalla. Corregido el desbordamiento ya entra, pero se
-       fija el limite para que nunca vuelva a depender de ello.
-       ---------------------------------------------------------------------- */
+    /* Capa y ventana modal del panel de administración */
     .adm-overlay {
         padding: 0.75rem;
     }
@@ -244,12 +179,7 @@
         min-height: 44px;
     }
 
-
-    /* ----------------------------------------------------------------------
-       1.9 VISTA DE LECTURA
-       reader.css ya trae su propio bloque responsive; aqui solo se ajusta la
-       separacion respecto a la cabecera compactada.
-       ---------------------------------------------------------------------- */
+    /* Vista de lectura y margen de desplazamiento */
     .reader-page {
         padding-bottom: 3rem;
     }
@@ -259,10 +189,7 @@
     }
 }
 
-
-/* ==========================================================================
-   2. MOVIL ESTRECHO  (hasta 400px)
-   ========================================================================== */
+/* --- Moviles muy estrechos (hasta 400px) --- */
 @media (max-width: 400px) {
 
     .logo {
@@ -283,22 +210,16 @@
         font-size: 1.5rem;
     }
 
-    /* Los cuatro filtros pasan a una sola columna: "NDS / 3DS" ya no cabe
-       partido en dos sin quedar apretado contra el borde del boton. */
     .tab-btn {
         flex: 1 1 100%;
     }
 }
 
-
-/* ==========================================================================
-   3. MOVIL EN HORIZONTAL
-   La cabecera sticky se come casi media pantalla cuando el alto es minimo.
-   ========================================================================== */
+/* --- Orientación horizontal en pantalla móvil (Landscape) --- */
 @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
 
     .main-header {
-        position: static;          /* deja de robar alto durante el scroll */
+        position: static;
         flex-direction: row;
         padding: 0.5rem 1rem;
     }
@@ -317,13 +238,7 @@
     }
 }
 
-
-/* ==========================================================================
-   4. ACCESIBILIDAD
-   ========================================================================== */
-
-/* En pantalla tactil no hay puntero que "repose": los estados hover quedaban
-   pegados tras el toque. Se les da un realce inmediato al pulsar. */
+/* --- Respuesta táctil en pantallas sin puntero mouse --- */
 @media (hover: none) {
 
     .tab-btn:active,
@@ -337,6 +252,7 @@
     }
 }
 
+/* --- Accesibilidad para reducir movimiento --- */
 @media (prefers-reduced-motion: reduce) {
 
     .tab-btn:active,
