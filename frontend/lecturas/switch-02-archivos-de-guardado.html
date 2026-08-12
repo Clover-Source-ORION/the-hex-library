@@ -4,22 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Archivos de guardado | The Hex Library</title>
-    <meta name="description" content="Extraccion y edicion de partidas de Nintendo Switch: estructura por bloques, comprobaciones de integridad y comparacion diferencial.">
-    <!-- Estilos globales de la plataforma: se cargan SIN modificar -->
+    <meta name="description" content="Extracción y edición de partidas de Nintendo Switch: estructura por bloques, comprobaciones de integridad y comparación diferencial.">
+    
+    <!-- Hojas de estilo globales, de lectura y adaptabilidad móvil -->
     <link rel="stylesheet" href="../css/style.css?v=3">
     <link rel="stylesheet" href="../css/admin.css?v=3">
-    <!-- Estilos exclusivos de la vista de lectura (encapsulados) -->
     <link rel="stylesheet" href="../css/reader.css?v=1">
-    <!-- Ajustes de visualizacion en movil: archivo aditivo, solo @media -->
     <link rel="stylesheet" href="../css/movil.css?v=1">
-    <!-- Fuente Pixel/Tech de Google Fonts -->
+    
+    <!-- Fuentes tipográficas externas -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<!-- Encabezado / Navegación -->
+    <!-- Encabezado con marca y menú de navegación -->
     <header class="main-header">
         <div class="logo">
             <span>The Hex</span> Library
@@ -33,15 +33,11 @@
         </nav>
     </header>
 
-    <!-- ==================================================================
-         VISTA DE LECTURA
-         Todo el marcado de aqui abajo cuelga de .reader-page/.reader-container
-         y se estiliza unicamente desde css/reader.css.
-         ================================================================== -->
+    <!-- Contenido principal: Lector de artículos -->
     <main class="reader-page">
         <article class="reader-container">
 
-            <!-- Encabezado tecnico del archivo -->
+            <!-- Ficha con metadatos técnicos del documento -->
             <header class="reader-filecard">
                 <dl>
                     <dt>File_ID</dt>
@@ -59,33 +55,36 @@
 
             <span class="reader-tag switch">SWITCH</span>
             <h1>Archivos de guardado</h1>
-            <p class="reader-lead">Las partidas de Switch viven en un area reservada de la memoria interna, separadas por usuario y sin acceso nativo como archivos. Este documento cubre el ciclo de extraccion y restauracion, la estructura por bloques y como localizar un campo concreto sin documentacion previa.</p>
+            <p class="reader-lead">Las partidas de Switch viven en un área reservada de la memoria interna, separadas por usuario y sin acceso nativo como archivos. Este documento cubre el ciclo de extracción y restauración, la estructura por bloques y cómo localizar un campo concreto sin documentación previa.</p>
 
+            <!-- Índice interactivo con enlaces a secciones -->
             <details class="reader-details reader-toc" open>
-                <summary>Indice del documento</summary>
+                <summary>Índice del documento</summary>
                 <div class="reader-details-body">
                     <ol>
-                        <li><a href="#donde">Donde viven las partidas guardadas</a></li>
+                        <li><a href="#donde">Dónde viven las partidas guardadas</a></li>
                         <li><a href="#ciclo">El ciclo de trabajo</a></li>
                         <li><a href="#bloques">Estructura por bloques</a></li>
                         <li><a href="#integridad">Comprobaciones de integridad</a></li>
                         <li><a href="#localizar">Localizar un valor concreto</a></li>
-                        <li><a href="#limites">Limites y sensatez</a></li>
+                        <li><a href="#limites">Límites y sensatez</a></li>
                     </ol>
                 </div>
             </details>
 
-            <h2 id="donde">1. Donde viven las partidas guardadas</h2>
+            <!-- Sección 1: Ubicación de las partidas -->
+            <h2 id="donde">1. Dónde viven las partidas guardadas</h2>
 
-            <p>Las partidas de Switch no estan en la tarjeta SD ni junto al juego: residen en un area reservada de la memoria interna, separada por usuario y por titulo, y el sistema no ofrece ninguna forma nativa de abrirlas como archivos. Acceder a ellas requiere una herramienta que las extraiga a la SD, las deje editar y las devuelva.</p>
+            <p>Las partidas de Switch no están en la tarjeta <code>SD</code> ni junto al juego: residen en un **área reservada de la memoria interna**, separada por usuario y por título, y el sistema no ofrece ninguna forma nativa de abrirlas como archivos. Acceder a ellas requiere una herramienta que las extraiga a la <code>SD</code>, las deje editar y las devuelva.</p>
 
-            <p>Esa separacion por usuario tiene una consecuencia practica que sorprende a mucha gente: dos perfiles de la misma consola tienen partidas completamente independientes, y una extraccion hecha con el perfil equivocado devuelve la partida de otro.</p>
+            <p>Esa separación por usuario tiene una consecuencia práctica que sorprende a mucha gente: **dos perfiles de la misma consola tienen partidas completamente independientes**, y una extracción hecha con el perfil equivocado devuelve la partida de otro.</p>
 
             <div class="reader-callout aviso">
                 <span class="reader-callout-title">Antes de cualquier cosa</span>
-                <p>Extrae una copia intacta y guardala fuera de la consola antes de modificar nada. Una partida corrupta no siempre se detecta al cargar: puede funcionar durante horas y fallar al llegar a una zona concreta, cuando ya has sobrescrito la unica copia buena que tenias.</p>
+                <p>Extrae una copia intacta y guárdala fuera de la consola antes de modificar nada. Una partida corrupta no siempre se detecta al cargar: puede funcionar durante horas y fallar al llegar a una zona concreta, cuando ya has sobrescrito la única copia buena que tenías.</p>
             </div>
 
+            <!-- Sección 2: Flujo de trabajo para modificar datos -->
             <h2 id="ciclo">2. El ciclo de trabajo</h2>
 
             <div class="reader-code">
@@ -102,11 +101,12 @@
 </code></pre>
             </div>
 
-            <p>El paso de reiniciar el juego no es opcional. La partida se mantiene en memoria mientras el titulo esta abierto, y restaurar por debajo mientras corre significa que al guardar la siguiente vez se sobrescribira tu archivo con el estado que la consola tenia cargado.</p>
+            <p>El paso de **reiniciar el juego no es opcional**. La partida se mantiene en memoria mientras el título está abierto, y restaurar por debajo mientras corre significa que al guardar la siguiente vez se sobrescribirá tu archivo con el estado que la consola tenía cargado.</p>
 
+            <!-- Sección 3: Estructura interna por bloques -->
             <h2 id="bloques">3. Estructura por bloques</h2>
 
-            <p>Casi ningun juego moderno guarda una estructura plana. El patron habitual es un contenedor dividido en bloques identificados, cada uno con su tipo y su tamano, de modo que el juego pueda anadir bloques nuevos en una actualizacion sin invalidar las partidas anteriores.</p>
+            <p>Casi ningún juego moderno guarda una estructura plana. El patrón habitual es un **contenedor dividido en bloques identificados**, cada uno con su tipo y su tamaño, de modo que el juego pueda añadir bloques nuevos en una actualización sin invalidar las partidas anteriores.</p>
 
             <div class="reader-table-wrap">
                 <table class="reader-table">
@@ -114,44 +114,45 @@
                     <thead>
                         <tr>
                             <th scope="col">Campo</th>
-                            <th scope="col">Tipo tipico</th>
-                            <th scope="col">Funcion</th>
+                            <th scope="col">Tipo típico</th>
+                            <th scope="col">Función</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td>Identificador</td>
-                            <td>u32</td>
-                            <td class="meta">Que dato contiene el bloque</td>
+                            <td><code>u32</code></td>
+                            <td class="meta">Qué dato contiene el bloque</td>
                         </tr>
                         <tr>
-                            <td>Tamano</td>
-                            <td>u32</td>
-                            <td class="meta">Longitud de la carga util</td>
+                            <td>Tamaño</td>
+                            <td><code>u32</code></td>
+                            <td class="meta">Longitud de la carga útil</td>
                         </tr>
                         <tr>
                             <td>Tipo</td>
-                            <td>u8</td>
-                            <td class="meta">Valor suelto, array o estructura</td>
+                            <td><code>u8</code></td>
+                            <td class="meta">Valor suelto, <em>array</em> o estructura</td>
                         </tr>
                         <tr>
-                            <td>Carga util</td>
-                            <td>bytes</td>
+                            <td>Carga útil</td>
+                            <td><code>bytes</code></td>
                             <td class="meta">El dato propiamente dicho</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <p>Los bloques suelen aparecer ordenados por identificador, lo que permite localizar uno concreto sin recorrer el archivo entero. Al editar, la regla de oro es no cambiar el tamano: sustituye valores dentro de la carga util y deja la estructura como esta. Insertar o eliminar bytes desplaza todo lo posterior y rompe cualquier indice que apunte mas alla.</p>
+            <p>Los bloques suelen aparecer ordenados por identificador, lo que permite localizar uno concreto sin recorrer el archivo entero. Al editar, **la regla de oro es no cambiar el tamaño**: sustituye valores dentro de la carga útil y deja la estructura como está. Insertar o eliminar bytes desplaza todo lo posterior y rompe cualquier índice que apunte más allá.</p>
 
+            <!-- Sección 4: Mecanismos de protección e integridad -->
             <h2 id="integridad">4. Comprobaciones de integridad</h2>
 
-            <p>La mayoria de los juegos verifican que la partida no ha sido alterada. Los mecanismos van de lo trivial a lo impracticable:</p>
+            <p>La mayoría de los juegos verifican que la partida no ha sido alterada. Los mecanismos van de lo trivial a lo impracticable:</p>
 
             <div class="reader-table-wrap">
                 <table class="reader-table">
-                    <caption>Mecanismos de verificacion, de menor a mayor dificultad</caption>
+                    <caption>Mecanismos de verificación, de menor a mayor dificultad</caption>
                     <thead>
                         <tr>
                             <th scope="col">Mecanismo</th>
@@ -161,17 +162,17 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Suma simple o CRC</td>
+                            <td>Suma simple o <code>CRC</code></td>
                             <td class="meta">Un bloque o el archivo</td>
                             <td class="meta">Se recalcula sin dificultad</td>
                         </tr>
                         <tr>
-                            <td>Hash criptografico</td>
+                            <td><em>Hash</em> criptográfico</td>
                             <td class="meta">Por bloque</td>
                             <td class="meta">Se recalcula si se conoce el alcance exacto</td>
                         </tr>
                         <tr>
-                            <td>Hash con clave secreta</td>
+                            <td><em>Hash</em> con clave secreta</td>
                             <td class="meta">Archivo completo</td>
                             <td class="meta">Requiere la clave del juego</td>
                         </tr>
@@ -185,65 +186,68 @@
             </div>
 
             <div class="reader-callout dato">
-                <span class="reader-callout-title">Sintoma revelador</span>
-                <p>Si el juego rechaza la partida nada mas cargarla, el problema es de verificacion. Si la carga pero muestra datos absurdos, el problema es de estructura: has escrito en el offset equivocado o has desplazado bytes. Distinguir ambos casos ahorra horas de busqueda.</p>
+                <span class="reader-callout-title">Síntoma revelador</span>
+                <p>Si el juego rechaza la partida nada más cargarla, **el problema es de verificación**. Si la carga pero muestra datos absurdos, **el problema es de estructura**: has escrito en el <em>offset</em> equivocado o has desplazado bytes. Distinguir ambos casos ahorra horas de búsqueda.</p>
             </div>
 
+            <!-- Sección 5: Comparación diferencial de archivos -->
             <h2 id="localizar">5. Localizar un valor concreto</h2>
 
-            <p>Sin documentacion previa, la tecnica es la comparacion diferencial. Consiste en producir dos partidas que difieran en una sola cosa conocida y ver que bytes cambian:</p>
+            <p>Sin documentación previa, la técnica es la **comparación diferencial**. Consiste en producir dos partidas que difieran en una sola cosa conocida y ver qué bytes cambian:</p>
 
             <ol>
-                <li>Guarda la partida y extraela. Es tu referencia.</li>
-                <li>Vuelve al juego, cambia una sola magnitud de forma controlada, por ejemplo gastando exactamente 100 unidades de moneda.</li>
+                <li>Guarda la partida y entráela. Es tu referencia.</li>
+                <li>Vuelve al juego, cambia una sola magnitud de forma controlada, por ejemplo gastando exactamente <code>100</code> unidades de moneda.</li>
                 <li>Guarda y extrae de nuevo.</li>
                 <li>Compara ambos archivos byte a byte.</li>
-                <li>Descarta las diferencias esperables: contadores de tiempo, sellos de fecha y checksums cambian siempre.</li>
-                <li>Entre las que queden, busca la que haya variado exactamente en 100. Ese es tu campo.</li>
+                <li>Descarta las diferencias esperables: contadores de tiempo, sellos de fecha y <em>checksums</em> cambian siempre.</li>
+                <li>Entre las que queden, busca la que haya variado exactamente en <code>100</code>. Ese es tu campo.</li>
             </ol>
 
             <div class="reader-code">
                 <div class="reader-code-bar"><span>terminal</span><span>SHELL</span></div>
-                <pre><code><span class="cmt"># Diferencia byte a byte entre dos volcados</span>
+                <pre><code><span class="cmt">// Diferencia byte a byte entre dos volcados</span>
 cmp -l antes.bin despues.bin | head -40
 
-<span class="cmt"># Salida: posicion (base 1) y ambos valores en octal</span>
-<span class="cmt">#   4218  310  244</span>
-<span class="cmt">#   4219   17   17</span>
+<span class="cmt">// Salida: posición (base 1) y ambos valores en octal</span>
+<span class="cmt">//   4218  310  244</span>
+<span class="cmt">//   4219   17   17</span>
 
-<span class="cmt"># Vista hexadecimal enfrentada de la zona sospechosa</span>
+<span class="cmt">// Vista hexadecimal enfrentada de la zona sospechosa</span>
 xxd -s 0x1070 -l 64 antes.bin   &gt; a.txt
 xxd -s 0x1070 -l 64 despues.bin &gt; b.txt
 diff -y a.txt b.txt</code></pre>
             </div>
 
             <details class="reader-details">
-                <summary>Deducir el tamano y el signo de un campo</summary>
+                <summary>Deducir el tamaño y el signo de un campo</summary>
                 <div class="reader-details-body">
-                    <p>Una vez localizado el offset, hace falta saber cuantos bytes ocupa. La forma directa es provocar un desbordamiento controlado: si el valor deja de crecer alrededor de 255, es de un byte; si lo hace cerca de 65535, de dos.</p>
-                    <p>El orden de bytes en Switch es little-endian, asi que un valor de 1000 en un campo de 16 bits aparece como <code>E8 03</code>. Ver el byte alto a la derecha confirma que has interpretado bien el campo.</p>
+                    <p>Una vez localizado el <em>offset</em>, hace falta saber cuántos bytes ocupa. La forma directa es provocar un desbordamiento controlado: si el valor deja de crecer alrededor de <code>255</code>, es de <code>1 byte</code>; si lo hace cerca de <code>65535</code>, de <code>2 bytes</code>.</p>
+                    <p>El orden de bytes en Switch es <em>little-endian</em>, así que un valor de <code>1000</code> en un campo de <code>16 bits</code> aparece como <code>E8 03</code>. Ver el byte alto a la derecha confirma que has interpretado bien el campo.</p>
                     <p>Para saber si admite negativos, busca un contexto donde el valor pueda bajar de cero. Si al hacerlo se vuelve enorme, el campo es sin signo y acaba de desbordarse hacia abajo, lo que en muchos juegos provoca comportamientos rotos.</p>
-                    <p>Conviene documentar cada campo hallado con su offset, su tamano y el rango que has verificado. Ese cuaderno es lo unico que sobrevive a la siguiente actualizacion del juego, que muy probablemente movera los offsets pero rara vez cambiara la semantica.</p>
+                    <p>Conviene documentar cada campo hallado con su <em>offset</em>, su tamaño y el rango que has verificado. Ese cuaderno es lo único que sobrevive a la siguiente actualización del juego, que muy probablemente moverá los <em>offsets</em> pero rara vez cambiará la semántica.</p>
                 </div>
             </details>
 
-            <h2 id="limites">6. Limites y sensatez</h2>
+            <!-- Sección 6: Recomendaciones finales -->
+            <h2 id="limites">6. Límites y sensatez</h2>
 
-            <p>Que un campo acepte un valor no significa que el juego lo tolere. Los desarrolladores asumen rangos que nunca validan porque el juego, por si solo, no puede salirse de ellos. Poner un contador en su maximo teorico suele provocar fallos en el momento mas inoportuno.</p>
+            <p>Que un campo acepte un valor no significa que el juego lo tolere. Los desarrolladores asumen rangos que nunca validan porque el juego, por sí solo, no puede salirse de ellos. Poner un contador en su máximo teórico suele provocar fallos en el momento más inoportuno.</p>
 
-            <p>La practica prudente es moverse dentro de valores que el juego podria haber alcanzado por medios normales, cambiar una cosa cada vez y verificar en partida antes de seguir. Y conservar la copia intacta: sigue siendo la unica garantia real.</p>
+            <p>La práctica prudente es **moverse dentro de valores que el juego podría haber alcanzado por medios normales**, cambiar una cosa cada vez y verificar en partida antes de seguir. Y conservar la copia intacta: sigue siendo la única garantía real.</p>
 
+            <!-- Pie del artículo con referencias y enlaces -->
             <footer class="reader-footer">
                 <h2 id="referencias">Referencias</h2>
                 <ul class="reader-sources">
-                    <li>Switchbrew, seccion de savedata y filesystem services.</li>
-                    <li>Documentacion de herramientas de gestion de partidas de la comunidad.</li>
+                    <li>Switchbrew, sección de savedata y filesystem services.</li>
+                    <li>Documentación de herramientas de gestión de partidas de la comunidad.</li>
                 </ul>
 
-                <nav class="reader-nav" aria-label="Navegacion entre documentos">
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
                     <a href="switch-01-layeredfs.html">&lt;&lt; Capas de archivos</a>
-                    <a href="../index.html#catalogo" class="volver">Volver al catalogo</a>
-                    <a href="switch-03-parches-de-codigo.html">Parches de codigo &gt;&gt;</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="switch-03-parches-de-codigo.html">Parches de código &gt;&gt;</a>
                 </nav>
 
                 <p class="reader-firma">EOF // NX/0x02_SAVEDATA // THE HEX LIBRARY </p>
@@ -252,26 +256,17 @@ diff -y a.txt b.txt</code></pre>
         </article>
     </main>
 
-<!-- Footer -->
+    <!-- Pie de página global -->
     <footer class="main-footer">
         <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
-        <!-- Acceso discreto al panel (tambien con Ctrl + Shift + A) -->
         <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
     </footer>
 
-
-    <!-- ==================================================================
-         CAPA DE ADMINISTRACION
-         Marcado inerte hasta que js/admin.js lo activa. Ocultarlo es solo
-         comodidad visual: la proteccion real es que /api/comentarios y
-         PUT /api/contenido devuelven 401 sin sesion valida en el servidor.
-         ================================================================== -->
-
-    <!-- Modal de acceso -->
+    <!-- Ventana modal de autenticación de administrador -->
     <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
         <div class="adm-modal">
             <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
-            <p class="adm-hint">Autenticacion requerida para el modulo de administracion.</p>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
 
             <form id="adm-login-form" class="contact-form" novalidate>
                 <div class="form-group">
@@ -293,7 +288,7 @@ diff -y a.txt b.txt</code></pre>
         </div>
     </div>
 
-    <!-- Panel principal -->
+    <!-- Modal del panel de control de administración -->
     <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
         <div class="adm-panel">
 
@@ -308,6 +303,7 @@ diff -y a.txt b.txt</code></pre>
                 </div>
             </div>
 
+            <!-- Navegación entre vistas del panel -->
             <div class="adm-tabs" role="tablist">
                 <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
                 <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
@@ -316,10 +312,10 @@ diff -y a.txt b.txt</code></pre>
 
             <div class="adm-body">
 
-                <!-- 1. Visor de Transmisiones (privado) -->
+                <!-- Vista 1: Transmisiones almacenadas -->
                 <section class="adm-view" data-vista="transmisiones" role="tabpanel">
                     <div class="adm-consola-barra">
-                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmision(es) en registro</span>
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
                         <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
                         <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
                     </div>
@@ -327,7 +323,7 @@ diff -y a.txt b.txt</code></pre>
                     <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
                 </section>
 
-                <!-- 2. Monitor de Consola -->
+                <!-- Vista 2: Monitor del sistema en tiempo real -->
                 <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
                     <div class="adm-consola-barra">
                         <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
@@ -339,11 +335,11 @@ diff -y a.txt b.txt</code></pre>
                     <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
                 </section>
 
-                <!-- 3. Editor Frontend -->
+                <!-- Vista 3: Edición de campos descriptivos -->
                 <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
                     <p class="adm-editor-aviso">
                         Solo se editan textos descriptivos. Los campos del formulario, sus
-                        atributos name/id, los valores de las categorias y los identificadores
+                        atributos name/id, los valores de las categorías y los identificadores
                         internos quedan fuera del alcance del editor: el servidor rechaza
                         cualquier clave ajena a la lista blanca.
                     </p>
@@ -359,8 +355,7 @@ diff -y a.txt b.txt</code></pre>
         </div>
     </div>
 
-    <!-- Vinculación de Lógica Interactiva (Al final para asegurar la UX) -->
-    <!-- consola.js va PRIMERO: intercepta console.* antes de que nadie lo use -->
+    <!-- Inclusión de scripts JS -->
     <script src="../js/consola.js?v=3"></script>
     <script src="../js/main.js?v=3"></script>
     <script src="../js/admin.js?v=3"></script>

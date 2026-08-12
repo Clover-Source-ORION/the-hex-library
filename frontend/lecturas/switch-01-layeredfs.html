@@ -5,21 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estructura de capas de archivos | The Hex Library</title>
     <meta name="description" content="Superposición de RomFS en Nintendo Switch: Title ID, estructura de carpetas, resolución de rutas y conflictos entre modificaciones.">
-    <!-- Estilos globales de la plataforma: se cargan SIN modificar -->
+    
+    <!-- Hojas de estilo generales y específicas de la vista -->
     <link rel="stylesheet" href="../css/style.css?v=3">
     <link rel="stylesheet" href="../css/admin.css?v=3">
-    <!-- Estilos exclusivos de la vista de lectura (encapsulados) -->
     <link rel="stylesheet" href="../css/reader.css?v=1">
-    <!-- Ajustes de visualizacion en movil: archivo aditivo, solo @media -->
     <link rel="stylesheet" href="../css/movil.css?v=1">
-    <!-- Fuente Pixel/Tech de Google Fonts -->
+    
+    <!-- Tipografías de Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<!-- Encabezado / Navegación -->
+    <!-- Encabezado con logo y menú de navegación -->
     <header class="main-header">
         <div class="logo">
             <span>The Hex</span> Library
@@ -33,15 +33,11 @@
         </nav>
     </header>
 
-    <!-- ==================================================================
-         VISTA DE LECTURA
-         Todo el marcado de aquí abajo cuelga de .reader-page/.reader-container
-         y se estiliza únicamente desde css/reader.css.
-         ================================================================== -->
+    <!-- Área principal: Vista de lectura del artículo -->
     <main class="reader-page">
         <article class="reader-container">
 
-            <!-- Encabezado técnico del archivo -->
+            <!-- Ficha técnica con metadatos del artículo -->
             <header class="reader-filecard">
                 <dl>
                     <dt>File_ID</dt>
@@ -61,6 +57,7 @@
             <h1>Estructura de capas de archivos</h1>
             <p class="reader-lead">En la Nintendo Switch desaparece la necesidad de reempaquetar el juego para modificarlo. El sistema intercepta las lecturas de archivos y entrega una **versión externa cuando existe**, lo que cambia por completo el flujo de trabajo respecto a GBA, DS y 3DS.</p>
 
+            <!-- Índice desplegable del documento -->
             <details class="reader-details reader-toc" open>
                 <summary>Índice del documento</summary>
                 <div class="reader-details-body">
@@ -75,7 +72,7 @@
                 </div>
             </details>
 
-            <!-- SECCIÓN 1 -->
+            <!-- Bloque 1: Funcionamiento general de la superposición -->
             <h2 id="idea">1. Sustituir sin reescribir</h2>
 
             <p>Las técnicas de GBA y DS comparten una premisa: para cambiar algo hay que modificar la imagen del juego y volver a empaquetarla. En Switch esa premisa desaparece. **El sistema intercepta las lecturas de archivos** y, si existe un archivo con la misma ruta en una carpeta externa, entrega ese en lugar del original.</p>
@@ -87,7 +84,7 @@
                 <p>La superposición se decide comparando rutas. Si el juego abre <code>/Data/Model/player.bfres</code> y tu archivo está en <code>/data/model/player.bfres</code>, no se sustituye nada. Mayúsculas, guiones y extensiones deben coincidir carácter a carácter con lo que hay en el <code>RomFS</code> original.</p>
             </div>
 
-            <!-- SECCIÓN 2 -->
+            <!-- Bloque 2: Explicación de los IDs de los juegos -->
             <h2 id="titleid">2. El Title ID</h2>
 
             <p>Cada juego se identifica con un número de 64 bits que se escribe como 16 dígitos hexadecimales (el **Title ID**). Es la clave que enlaza tu carpeta de modificaciones con el juego correcto, y hay que tener presente que las actualizaciones y los contenidos descargables (DLC) tienen identificadores derivados pero distintos del programa base.</p>
@@ -124,7 +121,7 @@
 
             <p>La confusión habitual es esperar que una modificación aplicada al programa base afecte a archivos que en realidad llegaron con una actualización. Cuando una actualización reemplaza un archivo, es su versión la que el juego abre, y es esa ruta la que hay que superponer.</p>
 
-            <!-- SECCIÓN 3 -->
+            <!-- Bloque 3: Estructura de carpetas en la tarjeta SD -->
             <h2 id="estructura">3. Estructura de carpetas</h2>
 
             <p>El diseño es deliberadamente literal: dentro de la carpeta del juego en la tarjeta SD, una subcarpeta <code>romfs</code> reproduce el árbol de recursos y una carpeta <code>exefs</code> contiene el código ejecutable.</p>
@@ -149,7 +146,7 @@
 
             <p>Solo hay que incluir los archivos que se sustituyen. **No se copia el <code>RomFS</code> completo**: la carpeta contiene exclusivamente las rutas modificadas, y todo lo demás se sirve del juego original.</p>
 
-            <!-- SECCIÓN 4 -->
+            <!-- Bloque 4: Proceso de carga en el sistema operativo -->
             <h2 id="mecanismo">4. Qué ocurre al abrir un archivo</h2>
 
             <p>El proceso que intercepta las llamadas al sistema de archivos comprueba, para cada apertura, si existe una versión superpuesta. La lógica es de todo o nada por archivo:</p>
@@ -165,7 +162,7 @@
                 <p>La sustitución opera sobre archivos completos, no sobre su contenido. Si un archivo empaquetado contiene cien texturas y quieres cambiar una, tienes que extraer el paquete, cambiar la textura, reconstruir el paquete entero y superponer el resultado. La capa de archivos no sabe nada de lo que hay dentro.</p>
             </div>
 
-            <!-- SECCIÓN 5 -->
+            <!-- Bloque 5: Resolución de incompatibilidades entre mods -->
             <h2 id="conflictos">5. Varias modificaciones a la vez</h2>
 
             <p>Aquí está el límite real del sistema. Dos modificaciones que sustituyan archivos distintos conviven sin problema, pero **dos que sustituyan el mismo archivo son incompatibles**: solo una carpeta puede ganar, y la otra queda ignorada por completo.</p>
@@ -186,14 +183,14 @@
                 </div>
             </details>
 
-            <!-- SECCIÓN 6 -->
+            <!-- Bloque 6: Impacto de rendimiento en lectura -->
             <h2 id="rendimiento">6. Coste de rendimiento</h2>
 
             <p>Cada apertura de archivo pasa por una comprobación adicional en la tarjeta SD, que es mucho más lenta que la memoria interna. Con unos pocos archivos superpuestos el efecto es imperceptible, pero una modificación que sustituya miles de rutas puede alargar visiblemente los tiempos de carga.</p>
 
             <p>La contramedida es agrupar. Un único archivo empaquetado grande se abre una vez; mil archivos sueltos se abren mil veces. Cuando una modificación crece, reempaquetar los recursos en los contenedores originales del juego suele recuperar el rendimiento perdido.</p>
 
-            <!-- Footer del artículo -->
+            <!-- Pie del artículo: Fuentes y enlaces de navegación -->
             <footer class="reader-footer">
                 <h2 id="referencias">Referencias</h2>
                 <ul class="reader-sources">
@@ -213,19 +210,13 @@
         </article>
     </main>
 
-<!-- Footer -->
+    <!-- Pie de página de la web -->
     <footer class="main-footer">
         <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
-        <!-- Acceso discreto al panel (también con Ctrl + Shift + A) -->
         <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
     </footer>
 
-
-    <!-- ==================================================================
-         CAPA DE ADMINISTRACIÓN (Mantenida intacta para integración JS)
-         ================================================================== -->
-
-    <!-- Modal de acceso -->
+    <!-- Módulo modal para la autenticación de usuario -->
     <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
         <div class="adm-modal">
             <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
@@ -251,7 +242,7 @@
         </div>
     </div>
 
-    <!-- Panel principal -->
+    <!-- Módulo modal para el panel de administración -->
     <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
         <div class="adm-panel">
 
@@ -266,6 +257,7 @@
                 </div>
             </div>
 
+            <!-- Pestañas de navegación interna del panel -->
             <div class="adm-tabs" role="tablist">
                 <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
                 <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
@@ -274,7 +266,7 @@
 
             <div class="adm-body">
 
-                <!-- 1. Visor de Transmisiones (privado) -->
+                <!-- Vista 1: Registro de transmisiones -->
                 <section class="adm-view" data-vista="transmisiones" role="tabpanel">
                     <div class="adm-consola-barra">
                         <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
@@ -285,7 +277,7 @@
                     <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
                 </section>
 
-                <!-- 2. Monitor de Consola -->
+                <!-- Vista 2: Monitor de registros de la consola -->
                 <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
                     <div class="adm-consola-barra">
                         <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
@@ -297,7 +289,7 @@
                     <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
                 </section>
 
-                <!-- 3. Editor Frontend -->
+                <!-- Vista 3: Edición dinámica de contenido editable -->
                 <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
                     <p class="adm-editor-aviso">
                         Solo se editan textos descriptivos. Los campos del formulario, sus
@@ -317,7 +309,7 @@
         </div>
     </div>
 
-    <!-- Scripts de la plataforma -->
+    <!-- Scripts de funcionalidad general y panel de control -->
     <script src="../js/consola.js?v=3"></script>
     <script src="../js/main.js?v=3"></script>
     <script src="../js/admin.js?v=3"></script>
