@@ -1,21 +1,17 @@
 'use strict';
 
-/**
- * The Hex Library - Servidor principal.
- *
- * Sirve el frontend estatico Y la API en el mismo origen. Esto es intencional:
- * al no haber cambio de origen, el fetch del formulario no dispara preflight CORS
- * y desaparece la clase de fallos "el formulario no envia" por origen cruzado.
- */
-
+// Importación de módulos nativos y dependencias
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
+// Configuración de base de datos y rutas
 const db = require('./config/db');
 const comentariosRoutes = require('./routes/comentarios.routes');
 const adminRoutes = require('./routes/admin.routes');
 const contenidoRoutes = require('./routes/contenido.routes');
+
+// Middlewares personalizados de seguridad y errores
 const {
   securityHeaders,
   jsonSyntaxError,
@@ -24,59 +20,55 @@ const {
 } = require('./middlewares/errorHandler');
 
 const app = express();
-// Number.isInteger permite PORT=0 (puerto efimero, util en pruebas), que un
-// `|| 3000` habria descartado por ser un valor falsy.
+
+// Configuración de puerto y directorio estático del frontend
 const PORT_ENV = Number(process.env.PORT);
 const PORT = Number.isInteger(PORT_ENV) && PORT_ENV >= 0 ? PORT_ENV : 3000;
 const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
 
-// Necesario para que req.ip sea real detras de un proxy (Render, Railway, Nginx).
+// Confianza en el proxy inverso para leer la IP real del usuario
 app.set('trust proxy', 1);
 
+// Middleware para aplicar cabeceras HTTP de seguridad
 app.use(securityHeaders);
 
-// CORS: por defecto mismo origen. Solo se abre si se declaran origenes explicitos
-// en la variable de entorno ALLOWED_ORIGINS (util con Live Server en :5500).
+// Configuración de orígenes permitidos desde variables de entorno
 const origenesPermitidos = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
 
+// Configuración de CORS para solicitudes seguras con credenciales
 app.use(
   cors({
     origin: origenesPermitidos.length > 0 ? origenesPermitidos : false,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    // Imprescindible para que la cookie de sesion viaje en origenes declarados.
     credentials: true,
     maxAge: 600
   })
 );
 
-// Body parser con limite: evita que un payload gigante agote la memoria.
+// Procesamiento de cuerpo JSON y formularios con límite de 20kb
 app.use(express.json({ limit: '20kb' }));
 app.use(express.urlencoded({ extended: false, limit: '20kb' }));
 app.use(jsonSyntaxError);
 
-// --- API ---
+// --- Rutas de la API ---
+
+// Endpoint para comprobar el estado y tiempo de actividad del servidor
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, servicio: 'the-hex-library', uptime: Math.round(process.uptime()) });
 });
 
+// Registro de endpoints de administración, contenido y comentarios
 app.use('/api/admin', adminRoutes);
 app.use('/api/contenido', contenidoRoutes);
 app.use('/api/comentarios', comentariosRoutes);
 app.use('/api', notFound);
 
-// --- Frontend estatico ---
-/**
- * IMPORTANTE: maxAge 0 + ETag.
- *
- * La version anterior servia todo con `max-age=1h`. Como el HTML y los scripts
- * se cachean por separado, el navegador podia quedarse con un index.html nuevo
- * y un main.js viejo a la vez; esa combinacion dejaba el panel sin inicializar.
- * Con maxAge 0 el navegador revalida siempre y responde 304 si nada cambio:
- * mismo ahorro de ancho de banda, sin riesgo de servir mezclas incoherentes.
- */
+// --- Archivos estáticos del Frontend ---
+
+// Configuración de archivos estáticos con revalidación de caché (maxAge: 0)
 app.use(
   express.static(FRONTEND_DIR, {
     extensions: ['html'],
@@ -86,15 +78,18 @@ app.use(
   })
 );
 
+// Captura de cualquier otra ruta para servir el index.html principal
 app.get('*', (req, res) => {
-  // El documento principal nunca se cachea: es el que referencia al resto.
   res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
 });
 
+// Middleware global para manejo unificado de errores
 app.use(errorHandler);
 
-// --- Arranque ---
+// --- Inicialización del Servidor ---
+
+// Prepara la base de datos y levanta el servidor HTTP
 async function iniciar() {
   const totales = await db.initAll();
   console.log(
@@ -105,6 +100,7 @@ async function iniciar() {
     console.log(`[server] The Hex Library en http://localhost:${PORT}`);
   });
 
+  // Apagado controlado del servidor ante señales del sistema
   const apagar = (senal) => {
     console.log(`\n[server] ${senal} recibido. Cerrando conexiones...`);
     server.close(() => process.exit(0));
@@ -114,6 +110,7 @@ async function iniciar() {
   process.on('SIGINT', () => apagar('SIGINT'));
   process.on('SIGTERM', () => apagar('SIGTERM'));
 
+  // Captura de errores no controlados en promesas
   process.on('unhandledRejection', (motivo) => {
     console.error('[fatal] Promesa rechazada sin manejar:', motivo);
   });
@@ -121,6 +118,7 @@ async function iniciar() {
   return server;
 }
 
+// Ejecuta el servidor si el archivo se invoca directamente desde Node.js
 if (require.main === module) {
   iniciar().catch((error) => {
     console.error('[fatal] No se pudo iniciar el servidor:', error);
@@ -128,4 +126,5 @@ if (require.main === module) {
   });
 }
 
+// Exportación de la instancia y la función de arranque
 module.exports = { app, iniciar };
