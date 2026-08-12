@@ -124,6 +124,43 @@
         </div>
     </main>
 
+    <!-- Asistente IA: la interfaz se controla desde js/main.js contra POST /api/asistente -->
+    <section id="asistente-ia" class="assistant-section">
+        <h2 class="section-title" data-editable="asistente.titulo">&gt;_ CONSULTAR_BYTE_AI</h2>
+        <p class="contact-subtitle" data-editable="asistente.subtitulo">Terminal conectada a un modelo entrenado en documentación técnica. Pregunta por offsets, estructuras de datos, mapeo de memoria RAM/ROM o comandos de scripting XSE.</p>
+
+        <div class="assistant-console">
+            <div class="assistant-bar">
+                <span class="assistant-dot"></span>
+                <span class="assistant-titulo">BYTE // v1.0</span>
+                <span id="ia-estado-servicio" class="assistant-estado" data-estado="desconocido">CONECTANDO...</span>
+            </div>
+
+            <!-- Historial de la conversación. Los mensajes se insertan como nodos de texto desde JS -->
+            <div id="ia-historial" class="assistant-log" role="log" aria-live="polite" aria-label="Historial de la conversacion">
+                <article class="ia-msg ia-msg-model">
+                    <header class="ia-msg-rol">BYTE</header>
+                    <div class="ia-msg-cuerpo">
+                        <p data-editable="asistente.bienvenida">Terminal lista. Formula tu consulta técnica: conversión de punteros, cabeceras de cartucho, tablas de datos, compresión LZ77 o comandos XSE.</p>
+                    </div>
+                </article>
+            </div>
+
+            <form id="ia-form" class="assistant-form" novalidate>
+                <label for="ia-entrada" class="assistant-label" data-editable="asistente.etiquetaEntrada">QUERY_INPUT (Consulta):</label>
+                <div class="assistant-input-row">
+                    <textarea id="ia-entrada" name="ia-entrada" rows="3" maxlength="2000"
+                        placeholder="Ej. ¿Cómo convierto el offset 0x3B4E80 en un puntero válido para la ROM?"
+                        aria-describedby="ia-status"></textarea>
+                    <button type="submit" id="ia-enviar" class="btn-neon" data-editable="asistente.boton">TRANSMITIR_QUERY</button>
+                </div>
+                <p id="ia-status" class="assistant-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+
+        <p class="assistant-aviso manual-meta" data-editable="asistente.aviso">// El modelo puede equivocarse en offsets concretos: verifica siempre contra tu propio volcado antes de escribir en la ROM.</p>
+    </section>
+
     <section id="contacto" class="contact-section">
         <h2 class="section-title" data-editable="contacto.titulo">&gt;_ INTERCEPTAR_CANAL_DE_TEXTO</h2>
         <p class="contact-subtitle" data-editable="contacto.subtitulo">¿Encontraste un error hexadecimal en las traducciones o requieres documentación de un offset específico? Envía una solicitud al administrador.</p>

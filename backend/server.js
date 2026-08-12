@@ -1,5 +1,10 @@
 'use strict';
 
+// Carga de variables de entorno desde backend/.env ANTES de cualquier otro
+// require: varios modulos leen process.env al importarse. El archivo .env no se
+// versiona (esta en .gitignore); usa .env.example como plantilla.
+require('dotenv').config();
+
 // Importación de módulos nativos y dependencias
 const path = require('path');
 const express = require('express');
@@ -10,6 +15,8 @@ const db = require('./config/db');
 const comentariosRoutes = require('./routes/comentarios.routes');
 const adminRoutes = require('./routes/admin.routes');
 const contenidoRoutes = require('./routes/contenido.routes');
+const asistenteRoutes = require('./routes/asistente.routes');
+const { estaConfigurado } = require('./services/geminiService');
 
 // Middlewares personalizados de seguridad y errores
 const {
@@ -57,13 +64,20 @@ app.use(jsonSyntaxError);
 
 // Endpoint para comprobar el estado y tiempo de actividad del servidor
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, servicio: 'the-hex-library', uptime: Math.round(process.uptime()) });
+  res.json({
+    ok: true,
+    servicio: 'the-hex-library',
+    uptime: Math.round(process.uptime()),
+    // Indica si el asistente tiene credencial cargada. Nunca expone la clave.
+    asistente: estaConfigurado() ? 'operativo' : 'sin-configurar'
+  });
 });
 
-// Registro de endpoints de administración, contenido y comentarios
+// Registro de endpoints de administración, contenido, comentarios y asistente
 app.use('/api/admin', adminRoutes);
 app.use('/api/contenido', contenidoRoutes);
 app.use('/api/comentarios', comentariosRoutes);
+app.use('/api/asistente', asistenteRoutes);
 app.use('/api', notFound);
 
 // --- Archivos estáticos del Frontend ---
@@ -95,6 +109,12 @@ async function iniciar() {
   console.log(
     `[db] Persistencia lista (${totales.comentarios} comentarios, ${totales.contenido} textos sobrescritos).`
   );
+
+  // Aviso temprano: el resto del sitio funciona igual, pero /api/asistente
+  // devolvera 503 hasta que exista GEMINI_API_KEY en backend/.env.
+  if (!estaConfigurado()) {
+    console.warn('[asistente] GEMINI_API_KEY no definida: el asistente respondera 503.');
+  }
 
   const server = app.listen(PORT, () => {
     console.log(`[server] The Hex Library en http://localhost:${PORT}`);

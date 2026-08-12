@@ -48,6 +48,13 @@ const CAMPOS_EDITABLES = Object.freeze([
   { clave: 'manual.9.desc', grupo: 'Manual 9 (Switch)', etiqueta: 'Descripcion', maxLen: 600, multilinea: true },
   { clave: 'manual.9.enlace', grupo: 'Manual 9 (Switch)', etiqueta: 'Texto del enlace', maxLen: 40 },
 
+  { clave: 'asistente.titulo', grupo: 'Asistente IA', etiqueta: 'Titulo de seccion', maxLen: 80 },
+  { clave: 'asistente.subtitulo', grupo: 'Asistente IA', etiqueta: 'Subtitulo', maxLen: 400, multilinea: true },
+  { clave: 'asistente.bienvenida', grupo: 'Asistente IA', etiqueta: 'Mensaje de bienvenida', maxLen: 400, multilinea: true },
+  { clave: 'asistente.etiquetaEntrada', grupo: 'Asistente IA', etiqueta: 'Etiqueta del campo', maxLen: 60 },
+  { clave: 'asistente.boton', grupo: 'Asistente IA', etiqueta: 'Texto del boton', maxLen: 40 },
+  { clave: 'asistente.aviso', grupo: 'Asistente IA', etiqueta: 'Aviso al pie', maxLen: 300, multilinea: true },
+
   { clave: 'contacto.titulo', grupo: 'Contacto', etiqueta: 'Titulo de seccion', maxLen: 80 },
   { clave: 'contacto.subtitulo', grupo: 'Contacto', etiqueta: 'Subtitulo', maxLen: 400, multilinea: true },
   { clave: 'contacto.etiquetaUsuario', grupo: 'Contacto', etiqueta: 'Etiqueta campo 1', maxLen: 60 },

@@ -1,7 +1,7 @@
 {
   "name": "the-hex-library-backend",
   "version": "1.0.0",
-  "description": "API REST de The Hex Library: canal de comentarios/reportes tecnicos con validacion, sanitizacion y persistencia.",
+  "description": "API REST de The Hex Library: catalogo de manuales, canal de comentarios/reportes tecnicos y asistente de IA (Google Gemini).",
   "main": "server.js",
   "type": "commonjs",
   "engines": {
@@ -11,16 +11,20 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node tests/smoke.test.js",
+    "test:ia": "node tests/asistente.test.js",
     "verificar": "node tests/verificar-version.js"
   },
   "keywords": [
     "rom-hacking",
     "api",
-    "express"
+    "express",
+    "gemini",
+    "ia"
   ],
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
     "express": "^4.21.2"
   }
 }

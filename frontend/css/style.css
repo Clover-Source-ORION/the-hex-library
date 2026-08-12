@@ -349,3 +349,272 @@ body {
     cursor: pointer;
     margin-top: 1rem;
 }
+/* --- Asistente de IA (seccion #asistente-ia) --- */
+.assistant-section {
+    padding: 5rem 5%;
+    background-color: #0b0b13;
+    border-top: 1px solid #1a1a2e;
+}
+
+.assistant-console {
+    max-width: 900px;
+    background-color: var(--bg-secundario);
+    border: 1px solid #1a1a2e;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.05);
+}
+
+/* Barra superior tipo terminal */
+.assistant-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background-color: #0f0f1c;
+    border-bottom: 1px solid #1a1a2e;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+}
+
+.assistant-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: var(--neon-verde);
+    box-shadow: 0 0 8px var(--neon-verde);
+    animation: ia-latido 2s ease-in-out infinite;
+}
+
+.assistant-titulo {
+    color: var(--neon-cian);
+    font-weight: bold;
+}
+
+.assistant-estado {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: var(--texto-mutado);
+}
+
+.assistant-estado[data-estado="ok"] { color: var(--neon-verde); }
+.assistant-estado[data-estado="error"] { color: #ff395c; }
+
+/* Historial de mensajes */
+.assistant-log {
+    max-height: 460px;
+    min-height: 180px;
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    scroll-behavior: smooth;
+}
+
+.ia-msg {
+    border-left: 3px solid #1a1a2e;
+    padding-left: 1rem;
+    max-width: 100%;
+}
+
+.ia-msg-user { border-left-color: var(--neon-cian); }
+.ia-msg-model { border-left-color: var(--neon-verde); }
+.ia-msg.ia-error { border-left-color: #ff395c; }
+
+.ia-msg-rol {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--texto-mutado);
+    margin-bottom: 0.4rem;
+}
+
+.ia-msg-user .ia-msg-rol { color: var(--neon-cian); }
+.ia-msg-model .ia-msg-rol { color: var(--neon-verde); }
+
+.ia-msg-cuerpo {
+    font-size: 0.9rem;
+    color: var(--texto-brillante);
+    overflow-wrap: anywhere;
+}
+
+.ia-msg-cuerpo p { margin-bottom: 0.75rem; }
+.ia-msg-cuerpo p:last-child { margin-bottom: 0; }
+
+.ia-subtitulo {
+    color: var(--neon-cian);
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+.ia-lista {
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+}
+
+.ia-lista li {
+    position: relative;
+    padding-left: 1.2rem;
+    margin-bottom: 0.35rem;
+    color: var(--texto-mutado);
+}
+
+.ia-lista li::before {
+    content: '>';
+    position: absolute;
+    left: 0;
+    color: var(--neon-verde);
+}
+
+/* Bloques de codigo devueltos por el modelo */
+.ia-code {
+    position: relative;
+    background-color: var(--bg-principal);
+    border: 1px solid #1a1a2e;
+    border-left: 3px solid var(--neon-cian);
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    overflow-x: auto;
+}
+
+.ia-code code {
+    font-family: var(--fuente-tech);
+    font-size: 0.82rem;
+    color: var(--neon-verde);
+    white-space: pre;
+}
+
+.ia-code[data-lenguaje]::before {
+    content: attr(data-lenguaje);
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 0.6rem;
+    letter-spacing: 1px;
+    color: var(--bg-principal);
+    background-color: var(--neon-cian);
+    padding: 1px 6px;
+    border-radius: 0 3px 0 4px;
+}
+
+.ia-code-inline {
+    font-family: var(--fuente-tech);
+    font-size: 0.85em;
+    color: var(--neon-cian);
+    background-color: rgba(0, 243, 255, 0.08);
+    border: 1px solid rgba(0, 243, 255, 0.2);
+    border-radius: 3px;
+    padding: 1px 5px;
+}
+
+/* Estado de carga mientras responde el modelo */
+.ia-espera {
+    color: var(--texto-mutado);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.ia-puntos {
+    display: inline-block;
+    width: 1.5em;
+    text-align: left;
+    color: var(--neon-verde);
+    animation: ia-parpadeo 1.2s steps(1, end) infinite;
+}
+
+.ia-cargando { border-left-color: var(--texto-mutado); }
+
+.ia-fallo {
+    color: #ff395c;
+    font-size: 0.85rem;
+}
+
+/* Formulario de entrada */
+.assistant-form {
+    border-top: 1px solid #1a1a2e;
+    padding: 1.25rem;
+    background-color: #0f0f1c;
+}
+
+.assistant-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--neon-cian);
+    margin-bottom: 0.5rem;
+}
+
+.assistant-input-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.assistant-input-row textarea {
+    flex: 1;
+    background-color: var(--bg-principal);
+    border: 1px solid #1a1a2e;
+    border-radius: 4px;
+    padding: 12px;
+    color: var(--texto-brillante);
+    font-family: var(--fuente-tech);
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 72px;
+}
+
+.assistant-input-row textarea:focus {
+    outline: none;
+    border-color: var(--neon-verde);
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+}
+
+.assistant-input-row .btn-neon {
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--fuente-tech);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.assistant-input-row .btn-neon:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.assistant-status {
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--texto-mutado);
+}
+
+.assistant-status[data-estado="error"] { color: #ff395c; }
+.assistant-status[data-estado="exito"] { color: var(--neon-verde); }
+
+.assistant-aviso {
+    max-width: 900px;
+    margin-top: 1rem;
+}
+
+/* Animaciones de la terminal */
+@keyframes ia-latido {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+}
+
+@keyframes ia-parpadeo {
+    0% { opacity: 0.2; }
+    50% { opacity: 1; }
+    100% { opacity: 0.2; }
+}
+
+/* Respeta la preferencia de movimiento reducido del sistema */
+@media (prefers-reduced-motion: reduce) {
+    .assistant-dot,
+    .ia-puntos {
+        animation: none;
+    }
+    .assistant-log { scroll-behavior: auto; }
+}

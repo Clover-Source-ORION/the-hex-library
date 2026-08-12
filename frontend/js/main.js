@@ -18,6 +18,8 @@
   var CLAVE_BORRADOR = 'hexlib:borrador-contacto';
   var CLAVE_CONTENIDO = 'hexlib:contenido-cache';
   var TIMEOUT_MS = 10000;
+  // El modelo de IA tarda mas que el resto de endpoints: espera ampliada.
+  var TIMEOUT_IA_MS = 45000;
 
   var LIMITES = {
     name: { min: 3, max: 60 },
@@ -26,12 +28,17 @@
 
   var TOPICS_VALIDOS = { error: true, request: true, bug: true };
 
-  // Cliente HTTP con tiempo de espera máximo (timeout) y manejo de errores
+  // Cliente HTTP con tiempo de espera máximo (timeout) y manejo de errores.
+  // `opciones.timeoutMs` permite ampliar la espera en llamadas lentas (IA).
   function peticion(ruta, opciones) {
     var controlador = new AbortController();
-    var temporizador = setTimeout(function () { controlador.abort(); }, TIMEOUT_MS);
 
     var config = Object.assign({ headers: {}, signal: controlador.signal }, opciones || {});
+    var limite = config.timeoutMs || TIMEOUT_MS;
+    delete config.timeoutMs;
+
+    var temporizador = setTimeout(function () { controlador.abort(); }, limite);
+
     config.headers = Object.assign({ Accept: 'application/json' }, config.headers);
     config.credentials = 'include';
 
@@ -337,6 +344,270 @@
     });
   }
 
+  // ==========================================================================
+  // ASISTENTE DE IA (POST /api/asistente)
+  // ==========================================================================
+
+  // Turnos enviados como contexto al modelo. Se recorta para no inflar la peticion.
+  var historialIA = [];
+  var MAX_TURNOS_CONTEXTO = 8;
+
+  // Inserta texto plano respetando negritas (**) y codigo en linea (`).
+  // Todo se escribe con textContent: nunca se interpreta HTML del modelo.
+  function aplicarInline(destino, texto) {
+    var partes = texto.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+
+    partes.forEach(function (parte) {
+      if (!parte) return;
+
+      if (parte.length > 4 && parte.indexOf('**') === 0 && parte.lastIndexOf('**') === parte.length - 2) {
+        var fuerte = document.createElement('strong');
+        fuerte.textContent = parte.slice(2, -2);
+        destino.appendChild(fuerte);
+        return;
+      }
+
+      if (parte.length > 2 && parte.charAt(0) === '`' && parte.charAt(parte.length - 1) === '`') {
+        var codigo = document.createElement('code');
+        codigo.className = 'ia-code-inline';
+        codigo.textContent = parte.slice(1, -1);
+        destino.appendChild(codigo);
+        return;
+      }
+
+      destino.appendChild(document.createTextNode(parte));
+    });
+  }
+
+  // Convierte un bloque de prosa en parrafos, titulos y listas.
+  function renderizarProsa(contenedor, prosa) {
+    prosa.split(/\n{2,}/).forEach(function (parrafo) {
+      var lineas = parrafo.split('\n').filter(function (l) { return l.trim() !== ''; });
+      if (lineas.length === 0) return;
+
+      var esLista = lineas.every(function (linea) {
+        return /^\s*([-*•]|\d+[.)])\s+/.test(linea);
+      });
+
+      if (esLista) {
+        var lista = document.createElement('ul');
+        lista.className = 'ia-lista';
+        lineas.forEach(function (linea) {
+          var item = document.createElement('li');
+          aplicarInline(item, linea.replace(/^\s*([-*•]|\d+[.)])\s+/, ''));
+          lista.appendChild(item);
+        });
+        contenedor.appendChild(lista);
+        return;
+      }
+
+      // Titulos markdown (#, ##, ###) se muestran como linea destacada.
+      if (/^#{1,6}\s+/.test(lineas[0]) && lineas.length === 1) {
+        var titulo = document.createElement('p');
+        titulo.className = 'ia-subtitulo';
+        aplicarInline(titulo, lineas[0].replace(/^#{1,6}\s+/, ''));
+        contenedor.appendChild(titulo);
+        return;
+      }
+
+      var p = document.createElement('p');
+      aplicarInline(p, lineas.join('\n'));
+      contenedor.appendChild(p);
+    });
+  }
+
+  // Renderiza la respuesta completa separando los bloques de codigo (```) del texto.
+  function renderizarRespuesta(contenedor, texto) {
+    contenedor.textContent = '';
+
+    texto.split('```').forEach(function (bloque, indice) {
+      // Los indices impares corresponden al interior de un bloque de codigo.
+      if (indice % 2 === 1) {
+        var lineas = bloque.replace(/^\r?\n/, '').split('\n');
+        var lenguaje = '';
+
+        if (lineas.length > 1 && /^[a-zA-Z0-9_+#-]{0,15}$/.test(lineas[0].trim())) {
+          lenguaje = lineas.shift().trim();
+        }
+
+        var pre = document.createElement('pre');
+        pre.className = 'ia-code';
+        if (lenguaje) pre.setAttribute('data-lenguaje', lenguaje.toUpperCase());
+
+        var code = document.createElement('code');
+        code.textContent = lineas.join('\n').replace(/\s+$/, '');
+        pre.appendChild(code);
+        contenedor.appendChild(pre);
+        return;
+      }
+
+      var prosa = bloque.trim();
+      if (prosa) renderizarProsa(contenedor, prosa);
+    });
+  }
+
+  // Crea una burbuja en el historial y devuelve su cuerpo para rellenarlo.
+  function crearBurbuja(historialNodo, rol) {
+    var articulo = document.createElement('article');
+    articulo.className = 'ia-msg ia-msg-' + rol;
+
+    var cabecera = document.createElement('header');
+    cabecera.className = 'ia-msg-rol';
+    cabecera.textContent = rol === 'user' ? 'USUARIO' : 'BYTE';
+
+    var cuerpo = document.createElement('div');
+    cuerpo.className = 'ia-msg-cuerpo';
+
+    articulo.appendChild(cabecera);
+    articulo.appendChild(cuerpo);
+    historialNodo.appendChild(articulo);
+    historialNodo.scrollTop = historialNodo.scrollHeight;
+
+    return { articulo: articulo, cuerpo: cuerpo };
+  }
+
+  // Caja de estado del asistente (independiente de la del formulario).
+  function estadoAsistente(mensaje, tipo) {
+    var caja = document.getElementById('ia-status');
+    if (!caja) return;
+    caja.textContent = mensaje ? '> ' + mensaje : '';
+    caja.hidden = !mensaje;
+    caja.setAttribute('data-estado', tipo || 'info');
+  }
+
+  // Consulta la disponibilidad del servicio para avisar antes de escribir.
+  function comprobarEstadoServicio() {
+    var indicador = document.getElementById('ia-estado-servicio');
+    if (!indicador) return;
+
+    peticion('/asistente/estado', { method: 'GET' })
+      .then(function () {
+        indicador.textContent = 'OPERATIVO';
+        indicador.setAttribute('data-estado', 'ok');
+      })
+      .catch(function (error) {
+        var sinClave = error.status === 503;
+        indicador.textContent = sinClave ? 'SIN_CONFIGURAR' : 'FUERA_DE_LINEA';
+        indicador.setAttribute('data-estado', 'error');
+        if (sinClave) {
+          estadoAsistente('El asistente no esta configurado en este servidor.', 'error');
+        }
+      });
+  }
+
+  // Gestiona el ciclo completo de envio, carga y renderizado del asistente.
+  function inicializarAsistente() {
+    var formulario = document.getElementById('ia-form');
+    var entrada = document.getElementById('ia-entrada');
+    var historialNodo = document.getElementById('ia-historial');
+    if (!formulario || !entrada || !historialNodo) return;
+
+    var boton = document.getElementById('ia-enviar');
+    var consultando = false;
+
+    function enviarConsulta() {
+      if (consultando) return;
+
+      var mensaje = limpiar(entrada.value);
+
+      if (mensaje.length < 3) {
+        estadoAsistente('Escribe una consulta de al menos 3 caracteres.', 'error');
+        entrada.focus();
+        return;
+      }
+
+      if (mensaje.length > 2000) {
+        estadoAsistente('La consulta no puede superar 2000 caracteres.', 'error');
+        return;
+      }
+
+      // Burbuja del usuario y limpieza del campo.
+      var burbujaUsuario = crearBurbuja(historialNodo, 'user');
+      renderizarProsa(burbujaUsuario.cuerpo, mensaje);
+      entrada.value = '';
+
+      // Estado de carga explicito mientras se espera al modelo.
+      var burbujaModelo = crearBurbuja(historialNodo, 'model');
+      burbujaModelo.articulo.classList.add('ia-cargando');
+
+      var cargando = document.createElement('p');
+      cargando.className = 'ia-espera';
+      cargando.textContent = 'Analizando datos de memoria';
+      var puntos = document.createElement('span');
+      puntos.className = 'ia-puntos';
+      puntos.textContent = '...';
+      cargando.appendChild(puntos);
+      burbujaModelo.cuerpo.appendChild(cargando);
+
+      consultando = true;
+      var textoBoton = boton ? boton.textContent : '';
+      if (boton) {
+        boton.disabled = true;
+        boton.textContent = 'PROCESANDO...';
+      }
+      entrada.setAttribute('aria-busy', 'true');
+      estadoAsistente('Consultando al modelo...', 'info');
+
+      peticion('/asistente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mensaje: mensaje, historial: historialIA }),
+        timeoutMs: TIMEOUT_IA_MS
+      })
+        .then(function (respuesta) {
+          var texto = (respuesta.data && respuesta.data.respuesta) || '';
+          burbujaModelo.articulo.classList.remove('ia-cargando');
+          renderizarRespuesta(burbujaModelo.cuerpo, texto);
+
+          // Se guarda el turno para dar continuidad a la siguiente consulta.
+          historialIA.push({ rol: 'user', texto: mensaje });
+          historialIA.push({ rol: 'model', texto: texto });
+          if (historialIA.length > MAX_TURNOS_CONTEXTO) {
+            historialIA = historialIA.slice(-MAX_TURNOS_CONTEXTO);
+          }
+
+          estadoAsistente('', 'info');
+        })
+        .catch(function (error) {
+          burbujaModelo.articulo.classList.remove('ia-cargando');
+          burbujaModelo.articulo.classList.add('ia-error');
+          burbujaModelo.cuerpo.textContent = '';
+
+          var aviso = document.createElement('p');
+          aviso.className = 'ia-fallo';
+          aviso.textContent = '[ERROR ' + (error.status || 0) + '] ' + error.message;
+          burbujaModelo.cuerpo.appendChild(aviso);
+
+          estadoAsistente(error.message, 'error');
+          console.warn('[asistente] Consulta fallida: ' + error.message);
+        })
+        .finally(function () {
+          consultando = false;
+          if (boton) {
+            boton.disabled = false;
+            boton.textContent = textoBoton;
+          }
+          entrada.removeAttribute('aria-busy');
+          historialNodo.scrollTop = historialNodo.scrollHeight;
+        });
+    }
+
+    formulario.addEventListener('submit', function (evento) {
+      evento.preventDefault();
+      enviarConsulta();
+    });
+
+    // Enter envia; Shift+Enter inserta un salto de linea.
+    entrada.addEventListener('keydown', function (evento) {
+      if (evento.key === 'Enter' && !evento.shiftKey) {
+        evento.preventDefault();
+        enviarConsulta();
+      }
+    });
+
+    comprobarEstadoServicio();
+  }
+
   // Exposición de funciones principales para compartir contexto con otros scripts
   window.HexApp = {
     API_BASE: API_BASE,
@@ -358,6 +629,7 @@
     cargarContenido();
     inicializarPestanas();
     inicializarFormulario();
+    inicializarAsistente();
     console.log('[sistema] Interfaz publica inicializada.');
   }
 
