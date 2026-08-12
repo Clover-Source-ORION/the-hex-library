@@ -16,6 +16,11 @@ delete process.env.GEMINI_API_KEY;
 
 const { iniciar } = require('../server');
 
+// server.js ejecuta dotenv.config() al importarse, asi que si existe un archivo
+// backend/.env con GEMINI_API_KEY la variable vuelve a poblarse. Se borra otra
+// vez DESPUES del require para que las dos primeras pruebas midan el escenario
+// "sin credencial" tanto en un equipo con .env como en uno sin el.
+// El servicio lee process.env en cada llamada, asi que basta con borrarla aqui.
 delete process.env.GEMINI_API_KEY;
 
 // Mock para interceptar peticiones a Google sin consumir cuota real
