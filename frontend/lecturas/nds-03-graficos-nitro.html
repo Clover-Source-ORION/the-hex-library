@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gráficos Nitro y texturas 3DS | The Hex Library</title>
+    <meta name="description" content="Formatos NCLR, NCGR, NSCR y NCER de Nintendo DS, y texturas BCLIM y BFLIM de 3DS con entrelazado Morton.">
+    <!-- Hojas de estilo globales, de lectura y responsive -->
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+    <!-- Fuentes tipográficas externas -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Encabezado principal y navegación -->
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Contenedor principal de la vista de lectura -->
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <!-- Ficha de metadatos técnicos del archivo -->
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>NDS/0x03_NCLR_NCGR_NSCR</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>NTR &middot; CTR</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.0 &nbsp;//&nbsp; lectura ~11 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag nds">NDS / 3DS</span>
+            <h1>Gráficos Nitro y texturas 3DS</h1>
+            <p class="reader-lead">En la Nintendo DS no existe el concepto de archivo de imagen: los colores, los tiles, la disposición en pantalla y la composición de <em>sprites</em> viven en formatos separados que hay que emparejar a mano. Este documento describe cada pieza y cómo encajan.</p>
+
+            <!-- Menú desplegable con el índice de contenidos -->
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#piezas">Una imagen repartida en cuatro archivos</a></li>
+                        <li><a href="#contenedor">Cabecera común de los formatos Nitro</a></li>
+                        <li><a href="#ncgr">NCGR: los tiles</a></li>
+                        <li><a href="#nscr">NSCR: la disposición en pantalla</a></li>
+                        <li><a href="#ncer">NCER: sprites compuestos</a></li>
+                        <li><a href="#3ds">Texturas de 3DS: BCLIM y BFLIM</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="piezas">1. Una imagen repartida en cuatro archivos</h2>
+
+            <p>En la Nintendo DS no existe el concepto de «archivo de imagen». Lo que en un archivo <code>.png</code> es un solo fichero, aquí se reparte entre formatos independientes que hay que emparejar a mano: **los colores por un lado, los tiles por otro, la disposición en pantalla por otro** y, si es un <em>sprite</em>, la definición de las piezas que lo componen en un cuarto.</p>
+
+            <p>Abrir un <code>NCGR</code> sin su <code>NCLR</code> correspondiente produce una imagen reconocible pero con colores arbitrarios. Es el síntoma normal, no un fallo: el archivo de tiles simplemente no contiene información de color.</p>
+
+            <!-- Tabla de formatos gráficos Nitro -->
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Formatos gráficos Nitro y su papel</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Formato</th>
+                            <th scope="col">Firma</th>
+                            <th scope="col">Sección</th>
+                            <th scope="col">Aporta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>NCLR</code></td><td class="addr"><code>RLCN</code></td><td class="addr"><code>TTLP</code></td><td class="meta">Los colores (paleta)</td></tr>
+                        <tr><td><code>NCGR</code></td><td class="addr"><code>RGCN</code></td><td class="addr"><code>RAHC</code></td><td class="meta">Los tiles de <code>8x8</code> píxeles</td></tr>
+                        <tr><td><code>NSCR</code></td><td class="addr"><code>RCSN</code></td><td class="addr"><code>NRCS</code></td><td class="meta">Qué tile va en cada casilla (mapa de pantalla)</td></tr>
+                        <tr><td><code>NCER</code></td><td class="addr"><code>RECN</code></td><td class="addr"><code>RBEC</code></td><td class="meta">Cómo se agrupan en <em>sprites</em> compuestos</td></tr>
+                        <tr><td><code>NANR</code></td><td class="addr"><code>RNAN</code></td><td class="addr"><code>RNBA</code></td><td class="meta">Secuencia de animación de celdas</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="contenedor">2. Cabecera común de los formatos Nitro</h2>
+
+            <p>Todos comparten el mismo envoltorio de 16 bytes, seguido de una o más secciones que a su vez llevan firma y tamaño propios. Saber leerla permite navegar cualquier formato del SDK aunque no conozcas su contenido.</p>
+
+            <!-- Cabecera común de 16 bytes Nitro SDK -->
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>cabecera genérica</span><span>16 BYTES</span></div>
+                <pre><code>0x00  <span class="key">char[4]</span>  firma invertida    <span class="cmt">// p. ej. "RGCN" (NCGR)</span>
+0x04  <span class="key">u16</span>      BOM = 0xFEFF
+0x06  <span class="key">u16</span>      versión
+0x08  <span class="key">u32</span>      tamaño total del archivo
+0x0C  <span class="key">u16</span>      tamaño de cabecera = 0x10
+0x0E  <span class="key">u16</span>      número de secciones
+
+<span class="cmt">// A partir de 0x10, cada sección:</span>
++0x00 <span class="key">char[4]</span>  firma de sección   <span class="cmt">// p. ej. "RAHC"</span>
++0x04 <span class="key">u32</span>      tamaño de la sección, cabecera incluida
++0x08 ...      datos útiles</code></pre>
+            </div>
+
+            <h2 id="ncgr">3. NCGR: los tiles</h2>
+
+            <p>La sección <code>RAHC</code> declara el ancho y el alto en tiles, la profundidad de color y un indicador de si los datos están en modo lineal o en modo tile. **Ese último campo es el que decide si tu volcado se verá bien o convertido en confeti**.</p>
+
+            <!-- Campos relevantes de la sección RAHC -->
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Campos relevantes de RAHC</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Campo</th>
+                            <th scope="col">Tipo</th>
+                            <th scope="col">Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Alto en tiles</td><td><code>u16</code></td><td class="meta"><code>0xFFFF</code> si es indeterminado</td></tr>
+                        <tr><td>Ancho en tiles</td><td><code>u16</code></td><td class="meta"><code>0xFFFF</code> si es indeterminado</td></tr>
+                        <tr><td>Profundidad</td><td><code>u32</code></td><td class="meta"><code>3</code> = 4 bpp, <code>4</code> = 8 bpp</td></tr>
+                        <tr><td>Modo</td><td><code>u32</code></td><td class="meta"><code>0</code> = tile, <code>1</code> = lineal</td></tr>
+                        <tr><td>Tamaño de datos</td><td><code>u32</code></td><td class="meta">Expresado en bytes</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Dimensiones a 0xFFFF</span>
+                <p>Muchos archivos <code>NCGR</code> no declaran su tamaño porque el juego lo conoce por otra vía. Al abrirlos, el editor tiene que adivinar y suele proponer un ancho por defecto de 32 tiles. Si la imagen sale troceada en diagonal, prueba anchos que sean divisores del número total de tiles: casi siempre 8, 16, 32 o 64.</p>
+            </div>
+
+            <p>La codificación de los píxeles es idéntica a la de Game Boy Advance: 32 bytes por tile en <code>4 bpp</code> con los <em>nibbles</em> invertidos, 64 bytes en <code>8 bpp</code>. Todo lo que sepas de tiles de GBA se aplica aquí sin cambios.</p>
+
+            <h2 id="nscr">4. NSCR: la disposición en pantalla</h2>
+
+            <p>Un fondo completo no repite tiles idénticos: los reutiliza. El <code>NSCR</code> es la rejilla que dice, para cada casilla de <code>8x8</code> píxeles de la pantalla, qué tile dibujar, con qué banco de paleta y si hay que voltearlo. La entrada es de 16 bits y su reparto de bits es exactamente el de la GBA.</p>
+
+            <!-- Formato de entrada NSCR (16 bits) -->
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>entrada NSCR</span><span>16 BITS</span></div>
+                <pre><code> 15 14 13 12 | 11 | 10 | 9 ................ 0
++------------+----+----+---------------------+
+|  paleta    | VF | HF |   índice de tile    |
++------------+----+----+---------------------+
+
+<span class="cmt">// Descomposición de valores:</span>
+tile   =  entrada &amp; <span class="off">0x03FF</span>;
+hflip  = (entrada &gt;&gt; <span class="off">10</span>) &amp; <span class="off">1</span>;
+vflip  = (entrada &gt;&gt; <span class="off">11</span>) &amp; <span class="off">1</span>;
+paleta = (entrada &gt;&gt; <span class="off">12</span>) &amp; <span class="off">0x0F</span>;</code></pre>
+            </div>
+
+            <p>Por eso el mismo tile aparece varias veces en un fondo con colores distintos: no hay copias, hay una sola definición referenciada con bancos de paleta diferentes. Si cambias los colores de un banco pensando que solo afecta a un elemento, verás cambiar todo lo que comparte ese banco.</p>
+
+            <h2 id="ncer">5. NCER: sprites compuestos</h2>
+
+            <p>El hardware de la DS dibuja objetos de tamaños limitados, hasta <code>64x64</code> píxeles. Un personaje más grande, o con partes que se mueven por separado, se construye juntando varios objetos. El <code>NCER</code> guarda esas recetas: cada celda es una lista de objetos con su posición relativa, su tamaño, su índice de tile inicial y su banco de paleta.</p>
+
+            <p>Editar un <code>NCER</code> es lo más delicado del conjunto porque los índices de tile apuntan al <code>NCGR</code> asociado. Añadir un tile en medio desplaza todos los posteriores y descoloca cada celda que los referenciaba. **La regla práctica es añadir siempre al final y no reordenar nunca**.</p>
+
+            <h2 id="3ds">6. Texturas de 3DS: BCLIM y BFLIM</h2>
+
+            <p>La 3DS abandona el sistema de tiles indexados y trabaja con texturas de verdad. Los formatos habituales son <code>BCLIM</code> para elementos de interfaz y <code>BFLIM</code> para texturas generales, y ambos comparten una peculiaridad que descoloca al llegar desde DS: **los metadatos van al final del archivo**, no al principio.</p>
+
+            <!-- Mapa de memoria de contenedor BCLIM -->
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>estructura BCLIM</span><span>MAPA DE MEMORIA</span></div>
+                <pre><code>+------------------------------------------+
+|  DATOS DE PÍXELES                        |
+|  (ocupan casi todo el archivo)           |
++------------------------------------------+
+|  <span class="key">CLIM</span>  cabecera al final (40 bytes)      |
+|    firma "CLIM", BOM, versión            |
+|  <span class="key">imag</span>  sección de imagen                 |
+|    ancho u16, alto u16                   |
+|    formato u8, rotación u8               |
+|    tamaño de datos u32                   |
++------------------------------------------+
+                      ^
+              fin del archivo</code></pre>
+            </div>
+
+            <!-- Formatos de píxel en 3DS -->
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Códigos de formato más frecuentes</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Código</th>
+                            <th scope="col">Formato</th>
+                            <th scope="col">Bits por píxel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="addr"><code>0x00</code></td><td><code>L8</code> (luminancia)</td><td class="num">8</td></tr>
+                        <tr><td class="addr"><code>0x01</code></td><td><code>A8</code> (solo alfa)</td><td class="num">8</td></tr>
+                        <tr><td class="addr"><code>0x02</code></td><td><code>LA4</code></td><td class="num">8</td></tr>
+                        <tr><td class="addr"><code>0x03</code></td><td><code>LA8</code></td><td class="num">16</td></tr>
+                        <tr><td class="addr"><code>0x05</code></td><td><code>RGB565</code></td><td class="num">16</td></tr>
+                        <tr><td class="addr"><code>0x06</code></td><td><code>RGB8</code></td><td class="num">24</td></tr>
+                        <tr><td class="addr"><code>0x07</code></td><td><code>RGBA8</code></td><td class="num">32</td></tr>
+                        <tr><td class="addr"><code>0x0B</code></td><td><code>ETC1</code> (con pérdida)</td><td class="num">4</td></tr>
+                        <tr><td class="addr"><code>0x0C</code></td><td><code>ETC1A4</code> (con alfa)</td><td class="num">8</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <details class="reader-details">
+                <summary>El orden de píxeles de la GPU: entrelazado Morton</summary>
+                <div class="reader-details-body">
+                    <p>Los píxeles no se guardan por filas. La GPU de la 3DS los organiza en bloques de <code>8x8</code> y, dentro de cada bloque, sigue una curva Z (orden de Morton) que agrupa los vecinos espacialmente. El objetivo es que los píxeles cercanos en pantalla estén cercanos en memoria, lo que mejora el rendimiento de la caché al aplicar texturas.</p>
+                    <p>El efecto visual de ignorarlo es inconfundible: la imagen aparece dividida en cuadrados de <code>8x8</code> correctos pero desordenados dentro de cada bloque, con un aspecto de mosaico revuelto. Si lo ves, el offset y el formato son correctos y lo único que falta es deshacer el entrelazado.</p>
+                    <p>La transformación se hace intercalando los bits de las coordenadas: los bits de <code>X</code> y los de <code>Y</code> se alternan para formar el índice lineal dentro del bloque. Es reversible y barata, y cualquier herramienta madura de 3DS ya la aplica sola.</p>
+                    <p>El algoritmo <code>ETC1</code> añade una capa más de complejidad, porque comprime en bloques de <code>4x4</code> con pérdida. Reimportar una textura <code>ETC1</code> varias veces degrada la imagen en cada pasada, igual que ocurre al volver a guardar un archivo JPEG.</p>
+                </div>
+            </details>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">Antes de editar</span>
+                <p>Guarda una copia del archivo original de cada textura que toques. Los formatos con pérdida no se recuperan, y la única forma de volver atrás después de tres reimportaciones es partir de nuevo del volcado limpio.</p>
+            </div>
+
+            <!-- Pie del artículo con referencias y navegación -->
+            <footer class="reader-footer">
+                <h2 id="referencias">Referencias</h2>
+                <ul class="reader-sources">
+                    <li>Especificaciones de formatos gráficos Nitro, proyecto Tinke.</li>
+                    <li>3dbrew, sección de formatos de textura CLIM y FLIM.</li>
+                    <li>GBATEK, secciones de DS Video y OBJ (Martin Korth).</li>
+                </ul>
+
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="nds-02-contenedores-narc-y-compresion.html">&lt;&lt; Contenedores NARC</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="switch-01-layeredfs.html">Capas de archivos &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // NDS/0x03_NCLR_NCGR_NSCR // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <!-- Pie de página general -->
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Modal de autenticación de administrador -->
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Panel interactivo de administración -->
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <!-- Navegación por pestañas dentro del panel -->
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <!-- Visor de transmisiones -->
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <!-- Monitor de consola -->
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <!-- Editor de contenidos frontend -->
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la plataforma -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

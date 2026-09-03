@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cabecera y sistema de archivos | The Hex Library</title>
+    <meta name="description" content="Cabecera del cartucho NDS, tablas FAT y FNT, overlays del ARM9 y flujo de desempaquetado y reempaquetado.">
+    <!-- Hojas de estilo globales, de lectura y responsive -->
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+    <!-- Fuentes tipográficas externas -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Encabezado principal y navegación -->
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Contenedor principal del documento de lectura -->
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <!-- Ficha de metadatos técnicos del archivo -->
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>NDS/0x01_FILESYSTEM</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>NTR/TWL &middot; ARM9+ARM7</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.0 &nbsp;//&nbsp; lectura ~10 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag nds">NDS / 3DS</span>
+            <h1>Cabecera y sistema de archivos</h1>
+            <p class="reader-lead">La Nintendo DS abandona el modelo de ROM plana de la GBA e incorpora un sistema de archivos real con directorios, nombres y rutas. Este documento describe las tablas internas que lo sostienen y el flujo de trabajo que sustituye a la edición hexadecimal directa.</p>
+
+            <!-- Menú desplegable con el índice de contenidos -->
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#cambio">De la ROM plana al sistema de archivos</a></li>
+                        <li><a href="#cabecera">Campos útiles de la cabecera</a></li>
+                        <li><a href="#fat">La FAT: dónde empieza y acaba cada archivo</a></li>
+                        <li><a href="#fnt">La FNT: la estructura de directorios</a></li>
+                        <li><a href="#overlays">Overlays</a></li>
+                        <li><a href="#flujo">Flujo de trabajo</a></li>
+                        <li><a href="#3ds">Qué cambia en 3DS</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="cambio">1. De la ROM plana al sistema de archivos</h2>
+
+            <p>En Game Boy Advance los datos viven de forma continua dentro de la ROM y se localizan persiguiendo punteros absolutos. La Nintendo DS cambia este paradigma: dentro de un archivo <code>.nds</code> existe un <strong>sistema de archivos estructurado</strong>, con directorios, nombres y rutas relativas.</p>
+
+            <p>Esto modifica radicalmente el flujo de modificación gráfica o de texto:</p>
+
+            <ul>
+                <li><strong>Desempaquetado:</strong> Se extrae el contenedor ejecutable en una estructura de carpetas de trabajo.</li>
+                <li><strong>Edición individual:</strong> Se modifican archivos específicos con formato propio (imágenes, textos, tablas).</li>
+                <li><strong>Reconstrucción:</strong> Se reempaqueta la ROM. Las herramientas se encargan de recalcular punteros, offsets y tablas de asignación automáticamente.</li>
+            </ul>
+
+            <h2 id="cabecera">2. Campos útiles de la cabecera</h2>
+
+            <p>Los primeros <strong>512 bytes</strong> (<code>0x000</code> a <code>0x1FF</code>) contienen la información descriptiva del cartucho. Estos son los valores críticos leídos por las herramientas de desempaquetado:</p>
+
+            <!-- Tabla descriptiva de la cabecera del cartucho NDS -->
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Cabecera del cartucho NDS (extracto de campos clave)</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Offset</th>
+                            <th scope="col">Tam.</th>
+                            <th scope="col">Campo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="addr"><code>0x000</code></td><td class="num">12 B</td><td>Título interno en texto ASCII</td></tr>
+                        <tr><td class="addr"><code>0x00C</code></td><td class="num">4 B</td><td>Código de juego (mismo esquema de 4 letras que en GBA)</td></tr>
+                        <tr><td class="addr"><code>0x010</code></td><td class="num">2 B</td><td>Código de fabricante / editora</td></tr>
+                        <tr><td class="addr"><code>0x020</code></td><td class="num">4 B</td><td>Offset del binario ejecutable ARM9 en la ROM</td></tr>
+                        <tr><td class="addr"><code>0x024</code></td><td class="num">4 B</td><td>Punto de entrada del procesador ARM9</td></tr>
+                        <tr><td class="addr"><code>0x028</code></td><td class="num">4 B</td><td>Dirección de carga del ARM9 en la memoria RAM</td></tr>
+                        <tr><td class="addr"><code>0x02C</code></td><td class="num">4 B</td><td>Tamaño en bytes del binario ARM9</td></tr>
+                        <tr><td class="addr"><code>0x030</code></td><td class="num">4 B</td><td>Offset del binario ejecutable ARM7 en la ROM</td></tr>
+                        <tr><td class="addr"><code>0x03C</code></td><td class="num">4 B</td><td>Tamaño en bytes del binario ARM7</td></tr>
+                        <tr><td class="addr"><code>0x040</code></td><td class="num">4 B</td><td>Offset de la FNT (Filename Table / Tabla de nombres)</td></tr>
+                        <tr><td class="addr"><code>0x044</code></td><td class="num">4 B</td><td>Tamaño de la FNT</td></tr>
+                        <tr><td class="addr"><code>0x048</code></td><td class="num">4 B</td><td>Offset de la FAT (File Allocation Table / Tabla de asignación)</td></tr>
+                        <tr><td class="addr"><code>0x04C</code></td><td class="num">4 B</td><td>Tamaño de la FAT</td></tr>
+                        <tr><td class="addr"><code>0x050</code></td><td class="num">4 B</td><td>Offset de la tabla de overlays del procesador ARM9</td></tr>
+                        <tr><td class="addr"><code>0x058</code></td><td class="num">4 B</td><td>Offset de la tabla de overlays del procesador ARM7</td></tr>
+                        <tr><td class="addr"><code>0x068</code></td><td class="num">4 B</td><td>Offset del bloque Banner (icono de menú y títulos multi-idioma)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p><strong>Roles de la arquitectura dual:</strong></p>
+            <ul>
+                <li><strong>ARM9:</strong> Procesa la lógica principal del juego, renderizado gráfico, motor de física y lectura de datos. Es el procesador sobre el que recae casi todo el análisis técnico.</li>
+                <li><strong>ARM7:</strong> Gestiona la salida de audio, la entrada táctil, el reloj en tiempo real (RTC) y el subsistema de comunicación inalámbrica.</li>
+            </ul>
+
+            <h2 id="fat">3. La FAT: dónde empieza y acaba cada archivo</h2>
+
+            <p>La <strong>FAT</strong> (<em>File Allocation Table</em>) es una tabla secuencial compuesta por entradas de <strong>8 bytes</strong>. La entrada en el índice <code>N</code> describe de forma directa la ubicación del archivo con identificador <code>ID N</code>:</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>entrada FAT</span><span>8 BYTES</span></div>
+                <pre><code>+-------------------+-------------------+
+| offset de inicio  | offset de fin     |
+|     u32 LE        |     u32 LE        |
++-------------------+-------------------+
+   0x00 - 0x03         0x04 - 0x07
+
+<span class="cmt">; El tamaño no se almacena explícitamente: se calcula</span>
+tamano = offset_fin - offset_inicio
+
+<span class="cmt">; Ambos valores son offsets absolutos dentro del archivo .nds</span></code></pre>
+            </div>
+
+            <p>Al no existir un campo de tamaño dedicado, alterar el tamaño de un archivo exige **reubicar los bloques adyacentes y actualizar las direcciones de inicio y fin** en sus respectivas entradas de la FAT. Por este motivo, las herramientas especializadas reconstruyen la tabla completa durante el proceso de compilación.</p>
+
+            <h2 id="fnt">4. La FNT: la estructura de directorios</h2>
+
+            <p>La <strong>FNT</strong> (<em>Filename Table</em>) vincula las rutas de carpetas y nombres de archivo con los IDs numéricos de la FAT. Se divide en dos secciones contiguas: una tabla principal de directorios y un bloque con las cadenas de texto asociadas.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Entrada de directorio en la FNT (8 bytes)</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Offset</th>
+                            <th scope="col">Tipo</th>
+                            <th scope="col">Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr"><code>0x00</code></td>
+                            <td><code>u32</code></td>
+                            <td>Offset hacia sus nombres de archivo (relativo al inicio de la FNT)</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x04</code></td>
+                            <td><code>u16</code></td>
+                            <td>ID de archivo (FAT) correspondiente al primer elemento del directorio</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x06</code></td>
+                            <td><code>u16</code></td>
+                            <td>ID del directorio padre. (En la entrada <code>0x0000</code> indica el número total de directorios)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>En la subsección de nombres, cada elemento comienza con un byte de longitud:</p>
+            <ul>
+                <li><strong>Bit 7 = 0:</strong> El elemento es un <strong>archivo</strong>. Le siguen <code>N</code> caracteres ASCII con su nombre.</li>
+                <li><strong>Bit 7 = 1:</strong> El elemento es un <strong>subdirectorio</strong>. Le siguen los caracteres del nombre y 2 bytes adicionales con su ID de directorio.</li>
+                <li><strong>Byte <code>0x00</code>:</strong> Marca el final de las entradas del directorio actual.</li>
+            </ul>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Por qué importa</span>
+                <p>Los identificadores de archivo (IDs) dentro de una carpeta son strictly consecutivos. Si el primer archivo de <code>/data/graphics/</code> corresponde al ID 240, el siguiente será de forma determinista el ID 241, lo que permite al ejecutable indexar recursos sin procesar las cadenas de texto en tiempo de ejecución.</p>
+            </div>
+
+            <h2 id="overlays">5. Overlays</h2>
+
+            <p>Dado que el ejecutable principal del ARM9 supera con frecuencia el espacio disponible en la RAM de la consola, el código se fragmenta en módulos dinámicos llamados <strong>overlays</strong>. La tabla situada en el offset <code>0x050</code> contiene entradas de 32 bytes por cada módulo, indicando su ID, dirección de destino en RAM, tamaño de código, tamaño del segmento BSS y el ID del archivo que contiene su binario.</p>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">Trampa habitual</span>
+                <p>Los overlays comparten regiones de memoria RAM dinámicamente. Dos módulos distintos pueden mapearse en la misma dirección de memoria en momentos diferentes del juego. Para aplicar parches en código ejecutable, es imprescindible identificar tanto la dirección de RAM como el índice de overlay específico.</p>
+            </div>
+
+            <h2 id="flujo">6. Flujo de trabajo</h2>
+
+            <!-- Ejemplo de comandos para unpack y repack usando ndstool -->
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>terminal</span><span>SHELL</span></div>
+                <pre><code><span class="cmt">// 1. Desempaquetar la ROM NDS en la estructura de trabajo</span>
+ndstool -x juego.nds \
+        -9 arm9.bin -7 arm7.bin \
+        -y9 y9.bin  -y7 y7.bin \
+        -d data -y overlay \
+        -t banner.bin -h header.bin
+
+<span class="cmt">// 2. Modificar los recursos requeridos en data/ u overlay/</span>
+
+<span class="cmt">// 3. Reconstruir la ROM aplicando las tablas corregidas</span>
+ndstool -c juego_mod.nds \
+        -9 arm9.bin -7 arm7.bin \
+        -y9 y9.bin  -y7 y7.bin \
+        -d data -y overlay \
+        -t banner.bin -h header.bin</code></pre>
+            </div>
+
+            <details class="reader-details">
+                <summary>Lista de comprobación antes de empaquetar</summary>
+                <div class="reader-details-body">
+                    <ul>
+                        <li>Conserva siempre el archivo <code>header.bin</code> extraído en el desempaquetado original.</li>
+                        <li><strong>No renombres ni muevas archivos</strong> dentro del directorio <code>data/</code>. La mayoría de juegos leen sus recursos por ID numérico en lugar de por ruta; alterar el orden alfabético cambiará los IDs asignados durante la reconstrucción.</li>
+                        <li>Evita añadir archivos sueltos en carpetas existentes por la misma razón: desplazarás los IDs de todos los elementos posteriores.</li>
+                        <li>Respeta los formatos de compresión (LZ77, Huffman, RLE). Si un recurso estaba comprimido y se incluye en formato descomprimido, el juego intentará procesarlo con el descompresor por hardware y provocará un cuelgue.</li>
+                        <li>Realiza pruebas iniciales en emuladores con soporte de depuración antes de probar en hardware real.</li>
+                    </ul>
+                </div>
+            </details>
+
+            <h2 id="3ds">7. Qué cambia en 3DS</h2>
+
+            <p>La consola Nintendo 3DS conserva el concepto de sistema de archivos interno, pero lo encapsula en contenedores jerárquicos de mayor complejidad. El contenedor principal es el formato <strong>NCCH</strong>, el cual se compone internamente de:</p>
+
+            <ul>
+                <li><strong>ExeFS (Executable Filesystem):</strong> Almacena los binarios ejecutables, módulos de código y el icono del título.</li>
+                <li><strong>RomFS (Read-Only Filesystem):</strong> Contiene la estructura de directorios y recursos del juego, actuando como el equivalente conceptual directo de la FNT y FAT de Nintendo DS.</li>
+            </ul>
+
+            <p>Los formatos de distribución externos como <strong>CIA</strong> (contenido instalable) o <strong>CCI / 3DS</strong> (dump de cartucho) son envoltorios que contienen uno o más contenedores NCCH. Una ventaja clave frente a NDS es que los entornos de desarrollo modernos en 3DS permiten redirigir la lectura de archivos hacia un <strong>RomFS capas (LayeredFS)</strong> sin necesidad de reempaquetar la ROM completa.</p>
+
+            <!-- Pie de página del artículo con navegación interna y fuentes -->
+            <footer class="reader-footer">
+                <h2 id="referencias">Referencias</h2>
+                <ul class="reader-sources">
+                    <li>GBATEK, secciones de DS Cartridge Header y DS Filesystem (Martin Korth).</li>
+                    <li>Documentación de ndstool, proyecto devkitPro.</li>
+                    <li>3dbrew, wiki técnica sobre arquitecturas NCCH, ExeFS y RomFS.</li>
+                </ul>
+
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="gba-03-cabecera-de-cartucho.html">&lt;&lt; Cabecera del cartucho</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="nds-02-contenedores-narc-y-compresion.html">Contenedores NARC &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // NDS/0x01_FILESYSTEM // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <!-- Pie de página general del sitio -->
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Modal de autenticación de administrador -->
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Panel de control interactivo para desarrolladores -->
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <!-- Pestañas del panel de administración -->
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <!-- Visor de transmisiones -->
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <!-- Monitor de consola -->
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <!-- Editor rápido de textos del frontend -->
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts del sistema -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

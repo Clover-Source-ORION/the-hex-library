@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cabecera del cartucho | The Hex Library</title>
+    <meta name="description" content="Los 192 primeros bytes de una ROM de GBA: campos, código de juego por región y cálculo del complemento de control.">
+
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+
+    <!-- Fuentes externas: Fira Code y VT323 provistas por Google Fonts bajo licencia SIL Open Font License (OFL) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <!-- Atributos data-editable: vinculan los nodos de texto directamente con el módulo de edición frontend en admin.js -->
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>GBA/0x03_CABECERA_ROM</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>AGB-001 &middot; BIOS</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.0 &nbsp;//&nbsp; lectura ~8 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag gba">GBA</span>
+            <h1>Cabecera del cartucho</h1>
+            <p class="reader-lead">Los primeros 192 bytes de un cartucho de Game Boy Advance no contienen código del juego, sino una ficha de identidad que la BIOS valida antes de ceder el control. Conocerla permite verificar un volcado, identificar su versión exacta y diagnosticar por qué una ROM deja de arrancar.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#proposito">Qué hace la cabecera</a></li>
+                        <li><a href="#estructura">Estructura byte a byte</a></li>
+                        <li><a href="#logo">Los 156 bytes intocables</a></li>
+                        <li><a href="#codigo">Anatomía del código de juego</a></li>
+                        <li><a href="#checksum">Cálculo del complemento de control</a></li>
+                        <li><a href="#verificacion">Verificación de un volcado</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="proposito">1. Qué hace la cabecera</h2>
+
+            <p>Los primeros <strong>192 bytes</strong> (<code>0x000</code> a <code>0x0BF</code>) de todo cartucho de Game Boy Advance son leídos por la BIOS antes de ejecutar el programa. Si la información no coincide con las firmas esperadas o falla la verificación, la consola se bloquea en la pantalla del logotipo de Nintendo y no ejecuta una sola instrucción del juego.</p>
+
+            <p>Para el <em>ROM hacking</em> y el análisis técnico, esta región es fundamental por dos motivos principales:</p>
+
+            <ul>
+                <li><strong>Integridad en el arranque:</strong> Cualquier herramienta que reescriba datos en este rango debe mantener la estructura o recalcular la suma de comprobación; de lo contrario, el archivo quedará inoperativo.</li>
+                <li><strong>Identificación unívoca:</strong> El <strong>código de juego de 4 letras</strong> sirve como identificador estándar que usan emuladores, parches IPS/UPS y bases de datos para reconocer la versión y región del juego.</li>
+            </ul>
+
+            <h2 id="estructura">2. Estructura byte a byte</h2>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Cabecera del cartucho: 0x000 a 0x0BF</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Offset</th>
+                            <th scope="col">Tam.</th>
+                            <th scope="col">Campo</th>
+                            <th scope="col">Contenido</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr"><code>0x000</code></td>
+                            <td class="num">4 B</td>
+                            <td>Punto de entrada</td>
+                            <td class="meta">Instrucción ARM de salto (Branch) al inicio del ejecutable</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x004</code></td>
+                            <td class="num">156 B</td>
+                            <td>Logotipo de Nintendo</td>
+                            <td class="meta">Mapa de bits comprimido, verificado byte a byte por la BIOS</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0A0</code></td>
+                            <td class="num">12 B</td>
+                            <td>Título interno</td>
+                            <td class="meta">Texto ASCII en mayúsculas, rellenado con bytes <code>0x00</code></td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0AC</code></td>
+                            <td class="num">4 B</td>
+                            <td>Código de juego</td>
+                            <td class="meta">Tipo de soporte + ID corto del título + código de región</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0B0</code></td>
+                            <td class="num">2 B</td>
+                            <td>Código de fabricante</td>
+                            <td class="meta">Identificador de la editora (ej. <code>01</code> = Nintendo)</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0B2</code></td>
+                            <td class="num">1 B</td>
+                            <td>Valor fijo</td>
+                            <td class="meta">Constantemente <code>0x96</code> (Requisito de hardware)</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0B3</code></td>
+                            <td class="num">1 B</td>
+                            <td>Código de unidad</td>
+                            <td class="meta"><code>0x00</code> en consolas comerciales estándar</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0B4</code></td>
+                            <td class="num">1 B</td>
+                            <td>Tipo de dispositivo</td>
+                            <td class="meta"><code>0x00</code> (salvo en hardware o cartuchos de depuración)</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0B5</code></td>
+                            <td class="num">7 B</td>
+                            <td>Reservado</td>
+                            <td class="meta">Relleno de ceros (<code>0x00</code>)</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0BC</code></td>
+                            <td class="num">1 B</td>
+                            <td>Versión de software</td>
+                            <td class="meta">Revisión del título (habitualmente <code>0x00</code>)</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0BD</code></td>
+                            <td class="num">1 B</td>
+                            <td>Complemento de control</td>
+                            <td class="meta">Suma de verificación (Checksum) de la cabecera</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0BE</code></td>
+                            <td class="num">2 B</td>
+                            <td>Reservado</td>
+                            <td class="meta">Relleno de ceros (<code>0x00</code>)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="logo">3. Los 156 bytes intocables</h2>
+
+            <p>El bloque comprendido entre <code>0x004</code> y <code>0x09F</code> alberga los datos gráficos del logotipo de Nintendo. Durante la secuencia de inicio, la BIOS copia este bloque a la VRAM para dibujarlo en pantalla y lo compara directamente contra una copia almacenada en la ROM interna de la propia consola.</p>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">Protección por hardware</span>
+                <p>Modificar un solo bit de este bloque provocará que la consola real se bloquee en el arranque. Aunque ciertos emuladores omiten esta comprobación por conveniencia, alterar este espacio impedirá siempre la ejecución en hardware real.</p>
+            </div>
+
+            <h2 id="codigo">4. Anatomía del código de juego</h2>
+
+            <p>Ubicado en el offset <code>0x0AC</code>, este campo consta de cuatro caracteres ASCII cuya estructura revela información clave sobre la ROM:</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>gamecode.txt</span><span>ASCII</span></div>
+                <pre><code>            <span class="key">A</span> <span class="key">X</span> <span class="key">V</span> <span class="key">E</span>
+            | |_| |
+            |  |  +--- Región de destino
+            |  |        E = América   P = Europa
+            |  |        J = Japón     S = España
+            |  |        F = Francia   D = Alemania
+            |  |        I = Italia
+            |  |
+            |  +------ Identificador único del título (2 caracteres)
+            |
+            +--------- Tipo de soporte (A o B = Cartucho GBA estándar)</code></pre>
+            </div>
+
+            <p><strong>Compatibilidad de parches y versiones:</strong><br>
+            Dos volcados con el mismo ID corto pero distinta letra de región no comparten la misma disposición de memoria. Las traducciones y localizaciones modifican las tablas de texto, desplazando las direcciones de memoria (offsets). Aplicar un parche diseñado para la versión estadounidense (<code>E</code>) sobre una ROM europea (<code>P</code>) corrompe casi siempre los datos.</p>
+
+            <h2 id="checksum">5. Cálculo del complemento de control</h2>
+
+            <p>El byte situado en <code>0x0BD</code> valida la integridad del rango <code>0x0A0</code> - <code>0x0BC</code> (título, código de juego, fabricante, valor fijo y revisión). El algoritmo oficial se implementa de la siguiente manera:</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>checksum.c</span><span>C</span></div>
+                <pre><code>uint8_t checksum_cabecera(const uint8_t *rom)
+{
+    uint8_t chk = 0;
+
+    <span class="cmt">// Suma acumulativa del rango 0xA0 a 0xBC (ambos incluidos)</span>
+    for (int i = <span class="off">0xA0</span>; i &lt;= <span class="off">0xBC</span>; i++) {
+        chk += rom[i];
+    }
+
+    <span class="cmt">// Aplicación del complemento con la constante fija 0x19</span>
+    return (uint8_t)(-(<span class="off">0x19</span> + chk));
+}</code></pre>
+            </div>
+
+            <p>La constante <code>0x19</code> es un parámetro fijo definido en las especificaciones del sistema. El resultado debe truncarse a un entero sin signo de 8 bits (<code>uint8_t</code>), o aplicar una máscara <code>&amp; 0xFF</code> en lenguajes de alto nivel.</p>
+
+            <details class="reader-details">
+                <summary>¿Cuándo es necesario recalcular el checksum?</summary>
+                <div class="reader-details-body">
+                    <p><strong>Requieren recalculación:</strong> Modificaciones en el título interno (<code>0x0A0</code>), cambio del código de juego o actualización de la versión del software.</p>
+                    <p><strong>No afectan al checksum:</strong> Editar gráficos, reescribir tablas de datos, modificar código ensamblador o insertar scripts. Todo el contenido a partir del byte <code>0x0C0</code> queda fuera del ámbito de comprobación de la BIOS.</p>
+                    <p><em>Nota:</em> Este checksum valida exclusivamente la cabecera. No garantiza que la ROM esté completa ni que no existan errores en el resto del archivo.</p>
+                </div>
+            </details>
+
+            <h2 id="verificacion">6. Verificación de un volcado</h2>
+
+            <p>Antes de manipular un archivo ejecutable, es aconsejable realizar tres comprobaciones de diagnóstico rápidas:</p>
+
+            <ul>
+                <li><strong>Comprobación de valor fijo:</strong> El byte en <code>0x0B2</code> debe contener exactamente <code>0x96</code>. De lo contrario, el archivo no es un volcado válido de GBA.</li>
+                <li><strong>Validación de Checksum:</strong> Calcula la suma de comprobación del rango <code>0x0A0</code> - <code>0x0BC</code> y compara el resultado con el byte en <code>0x0BD</code>. Un valor dispar indica modificaciones previas en la cabecera.</li>
+                <li><strong>Dimensiones del archivo:</strong> El tamaño total debe corresponder a una potencia de dos exacta (4 MiB, 8 MiB, 16 MiB o 32 MiB). Tamaños irregulares suelen indicar datos extra insertados al final del archivo por herramientas de parcheado obsoletas.</li>
+            </ul>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Buena práctica</span>
+                <p>Conserva siempre un volcado original intacto (Clean ROM) verificado mediante sumas Hash (MD5/SHA-1). Distribuye tus modificaciones exclusivamente mediante archivos de parche (IPS, UPS o BPS) para garantizar el cumplimiento legal y evitar la distribución de material protegido.</p>
+            </div>
+
+            <footer class="reader-footer">
+                <h2 id="referencias">Referencias</h2>
+                <ul class="reader-sources">
+                    <li>GBATEK, sección Cartridge Header (Martin Korth).</li>
+                    <li>No-Intro, convenciones de nomenclatura y verificación de volcados.</li>
+                </ul>
+
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="gba-02-paletas-y-graficos.html">&lt;&lt; Paletas y gráficos</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="nds-01-cabecera-y-sistema-de-archivos.html">Sistema de archivos NDS &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // GBA/0x03_CABECERA_ROM // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Capa de administración: estructura de modales y paneles requerida dinámicamente por admin.js para inyección de eventos y control de estado -->
+
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la plataforma: deben cargarse secuencialmente para garantizar las dependencias de inicialización entre consola.js, main.js y la gestión de sesión en admin.js -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

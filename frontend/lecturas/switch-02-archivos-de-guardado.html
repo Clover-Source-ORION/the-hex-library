@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archivos de guardado | The Hex Library</title>
+    <meta name="description" content="Extracción y edición de partidas de Nintendo Switch: estructura por bloques, comprobaciones de integridad y comparación diferencial.">
+    
+    <!-- Hojas de estilo globales, de lectura y adaptabilidad móvil -->
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+    
+    <!-- Fuentes tipográficas externas -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Encabezado con marca y menú de navegación -->
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Contenido principal: Lector de artículos -->
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <!-- Ficha con metadatos técnicos del documento -->
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>NX/0x02_SAVEDATA</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>NX &middot; savedata</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.0 &nbsp;//&nbsp; lectura ~10 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag switch">SWITCH</span>
+            <h1>Archivos de guardado</h1>
+            <p class="reader-lead">Las partidas de Switch viven en un área reservada de la memoria interna, separadas por usuario y sin acceso nativo como archivos. Este documento cubre el ciclo de extracción y restauración, la estructura por bloques y cómo localizar un campo concreto sin documentación previa.</p>
+
+            <!-- Índice interactivo con enlaces a secciones -->
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#donde">Dónde viven las partidas guardadas</a></li>
+                        <li><a href="#ciclo">El ciclo de trabajo</a></li>
+                        <li><a href="#bloques">Estructura por bloques</a></li>
+                        <li><a href="#integridad">Comprobaciones de integridad</a></li>
+                        <li><a href="#localizar">Localizar un valor concreto</a></li>
+                        <li><a href="#limites">Límites y sensatez</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <!-- Sección 1: Ubicación de las partidas -->
+            <h2 id="donde">1. Dónde viven las partidas guardadas</h2>
+
+            <p>Las partidas de Switch no están en la tarjeta <code>SD</code> ni junto al juego: residen en un **área reservada de la memoria interna**, separada por usuario y por título, y el sistema no ofrece ninguna forma nativa de abrirlas como archivos. Acceder a ellas requiere una herramienta que las extraiga a la <code>SD</code>, las deje editar y las devuelva.</p>
+
+            <p>Esa separación por usuario tiene una consecuencia práctica que sorprende a mucha gente: **dos perfiles de la misma consola tienen partidas completamente independientes**, y una extracción hecha con el perfil equivocado devuelve la partida de otro.</p>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">Antes de cualquier cosa</span>
+                <p>Extrae una copia intacta y guárdala fuera de la consola antes de modificar nada. Una partida corrupta no siempre se detecta al cargar: puede funcionar durante horas y fallar al llegar a una zona concreta, cuando ya has sobrescrito la única copia buena que tenías.</p>
+            </div>
+
+            <!-- Sección 2: Flujo de trabajo para modificar datos -->
+            <h2 id="ciclo">2. El ciclo de trabajo</h2>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>flujo</span><span>PROCESO</span></div>
+                <pre><code>  [consola]                [PC]              [consola]
+
+  extraer  ────────►  editar y validar  ────────►  restaurar
+     │                      │                          │
+     │                 comprobar                  reiniciar
+     │                 checksums                   el juego
+     │                      │                          │
+  copia de              copia de                 verificar
+  seguridad             trabajo                  en partida
+</code></pre>
+            </div>
+
+            <p>El paso de **reiniciar el juego no es opcional**. La partida se mantiene en memoria mientras el título está abierto, y restaurar por debajo mientras corre significa que al guardar la siguiente vez se sobrescribirá tu archivo con el estado que la consola tenía cargado.</p>
+
+            <!-- Sección 3: Estructura interna por bloques -->
+            <h2 id="bloques">3. Estructura por bloques</h2>
+
+            <p>Casi ningún juego moderno guarda una estructura plana. El patrón habitual es un **contenedor dividido en bloques identificados**, cada uno con su tipo y su tamaño, de modo que el juego pueda añadir bloques nuevos en una actualización sin invalidar las partidas anteriores.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Elementos habituales de un bloque</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Campo</th>
+                            <th scope="col">Tipo típico</th>
+                            <th scope="col">Función</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Identificador</td>
+                            <td><code>u32</code></td>
+                            <td class="meta">Qué dato contiene el bloque</td>
+                        </tr>
+                        <tr>
+                            <td>Tamaño</td>
+                            <td><code>u32</code></td>
+                            <td class="meta">Longitud de la carga útil</td>
+                        </tr>
+                        <tr>
+                            <td>Tipo</td>
+                            <td><code>u8</code></td>
+                            <td class="meta">Valor suelto, <em>array</em> o estructura</td>
+                        </tr>
+                        <tr>
+                            <td>Carga útil</td>
+                            <td><code>bytes</code></td>
+                            <td class="meta">El dato propiamente dicho</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Los bloques suelen aparecer ordenados por identificador, lo que permite localizar uno concreto sin recorrer el archivo entero. Al editar, **la regla de oro es no cambiar el tamaño**: sustituye valores dentro de la carga útil y deja la estructura como está. Insertar o eliminar bytes desplaza todo lo posterior y rompe cualquier índice que apunte más allá.</p>
+
+            <!-- Sección 4: Mecanismos de protección e integridad -->
+            <h2 id="integridad">4. Comprobaciones de integridad</h2>
+
+            <p>La mayoría de los juegos verifican que la partida no ha sido alterada. Los mecanismos van de lo trivial a lo impracticable:</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Mecanismos de verificación, de menor a mayor dificultad</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Mecanismo</th>
+                            <th scope="col">Alcance</th>
+                            <th scope="col">Al editar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Suma simple o <code>CRC</code></td>
+                            <td class="meta">Un bloque o el archivo</td>
+                            <td class="meta">Se recalcula sin dificultad</td>
+                        </tr>
+                        <tr>
+                            <td><em>Hash</em> criptográfico</td>
+                            <td class="meta">Por bloque</td>
+                            <td class="meta">Se recalcula si se conoce el alcance exacto</td>
+                        </tr>
+                        <tr>
+                            <td><em>Hash</em> con clave secreta</td>
+                            <td class="meta">Archivo completo</td>
+                            <td class="meta">Requiere la clave del juego</td>
+                        </tr>
+                        <tr>
+                            <td>Cifrado del contenido</td>
+                            <td class="meta">Archivo completo</td>
+                            <td class="meta">Hay que descifrar antes de leer nada</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Síntoma revelador</span>
+                <p>Si el juego rechaza la partida nada más cargarla, **el problema es de verificación**. Si la carga pero muestra datos absurdos, **el problema es de estructura**: has escrito en el <em>offset</em> equivocado o has desplazado bytes. Distinguir ambos casos ahorra horas de búsqueda.</p>
+            </div>
+
+            <!-- Sección 5: Comparación diferencial de archivos -->
+            <h2 id="localizar">5. Localizar un valor concreto</h2>
+
+            <p>Sin documentación previa, la técnica es la **comparación diferencial**. Consiste en producir dos partidas que difieran en una sola cosa conocida y ver qué bytes cambian:</p>
+
+            <ol>
+                <li>Guarda la partida y entráela. Es tu referencia.</li>
+                <li>Vuelve al juego, cambia una sola magnitud de forma controlada, por ejemplo gastando exactamente <code>100</code> unidades de moneda.</li>
+                <li>Guarda y extrae de nuevo.</li>
+                <li>Compara ambos archivos byte a byte.</li>
+                <li>Descarta las diferencias esperables: contadores de tiempo, sellos de fecha y <em>checksums</em> cambian siempre.</li>
+                <li>Entre las que queden, busca la que haya variado exactamente en <code>100</code>. Ese es tu campo.</li>
+            </ol>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>terminal</span><span>SHELL</span></div>
+                <pre><code><span class="cmt">// Diferencia byte a byte entre dos volcados</span>
+cmp -l antes.bin despues.bin | head -40
+
+<span class="cmt">// Salida: posición (base 1) y ambos valores en octal</span>
+<span class="cmt">//   4218  310  244</span>
+<span class="cmt">//   4219   17   17</span>
+
+<span class="cmt">// Vista hexadecimal enfrentada de la zona sospechosa</span>
+xxd -s 0x1070 -l 64 antes.bin   &gt; a.txt
+xxd -s 0x1070 -l 64 despues.bin &gt; b.txt
+diff -y a.txt b.txt</code></pre>
+            </div>
+
+            <details class="reader-details">
+                <summary>Deducir el tamaño y el signo de un campo</summary>
+                <div class="reader-details-body">
+                    <p>Una vez localizado el <em>offset</em>, hace falta saber cuántos bytes ocupa. La forma directa es provocar un desbordamiento controlado: si el valor deja de crecer alrededor de <code>255</code>, es de <code>1 byte</code>; si lo hace cerca de <code>65535</code>, de <code>2 bytes</code>.</p>
+                    <p>El orden de bytes en Switch es <em>little-endian</em>, así que un valor de <code>1000</code> en un campo de <code>16 bits</code> aparece como <code>E8 03</code>. Ver el byte alto a la derecha confirma que has interpretado bien el campo.</p>
+                    <p>Para saber si admite negativos, busca un contexto donde el valor pueda bajar de cero. Si al hacerlo se vuelve enorme, el campo es sin signo y acaba de desbordarse hacia abajo, lo que en muchos juegos provoca comportamientos rotos.</p>
+                    <p>Conviene documentar cada campo hallado con su <em>offset</em>, su tamaño y el rango que has verificado. Ese cuaderno es lo único que sobrevive a la siguiente actualización del juego, que muy probablemente moverá los <em>offsets</em> pero rara vez cambiará la semántica.</p>
+                </div>
+            </details>
+
+            <!-- Sección 6: Recomendaciones finales -->
+            <h2 id="limites">6. Límites y sensatez</h2>
+
+            <p>Que un campo acepte un valor no significa que el juego lo tolere. Los desarrolladores asumen rangos que nunca validan porque el juego, por sí solo, no puede salirse de ellos. Poner un contador en su máximo teórico suele provocar fallos en el momento más inoportuno.</p>
+
+            <p>La práctica prudente es **moverse dentro de valores que el juego podría haber alcanzado por medios normales**, cambiar una cosa cada vez y verificar en partida antes de seguir. Y conservar la copia intacta: sigue siendo la única garantía real.</p>
+
+            <!-- Pie del artículo con referencias y enlaces -->
+            <footer class="reader-footer">
+                <h2 id="referencias">Referencias</h2>
+                <ul class="reader-sources">
+                    <li>Switchbrew, sección de savedata y filesystem services.</li>
+                    <li>Documentación de herramientas de gestión de partidas de la comunidad.</li>
+                </ul>
+
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="switch-01-layeredfs.html">&lt;&lt; Capas de archivos</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="switch-03-parches-de-codigo.html">Parches de código &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // NX/0x02_SAVEDATA // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <!-- Pie de página global -->
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Ventana modal de autenticación de administrador -->
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal del panel de control de administración -->
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <!-- Navegación entre vistas del panel -->
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <!-- Vista 1: Transmisiones almacenadas -->
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <!-- Vista 2: Monitor del sistema en tiempo real -->
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <!-- Vista 3: Edición de campos descriptivos -->
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Inclusión de scripts JS -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

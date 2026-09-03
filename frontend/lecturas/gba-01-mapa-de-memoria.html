@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de memoria y offsets | The Hex Library</title>
+    <meta name="description" content="Regiones del bus de la Game Boy Advance, conversión entre offset de archivo y puntero de ejecución, y rastreo de tablas de punteros.">
+
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+
+    <!-- Fuentes externas: Fira Code y VT323 provistas por Google Fonts bajo licencia SIL Open Font License (OFL) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <!-- Atributos data-editable: permiten la captura y modificación dinámica de texto mediante el script del editor frontend -->
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>GBA/0x01_MAPA_MEMORIA</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>AGB-001 &middot; ARM7TDMI</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.0 &nbsp;//&nbsp; lectura ~9 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag gba">GBA</span>
+            <h1>Mapa de memoria y offsets</h1>
+            <p class="reader-lead">Todo lo que se edita en una ROM de Game Boy Advance se localiza mediante direcciones. Este documento explica cómo se reparte el bus de 32 bits, cómo se traduce un offset de archivo a un puntero de ejecución y cómo reconocer una tabla de punteros en un volcado hexadecimal.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#bus">El bus de direcciones de 32 bits</a></li>
+                        <li><a href="#mapa">Mapa de memoria completo</a></li>
+                        <li><a href="#conversion">Conversión entre offset y puntero</a></li>
+                        <li><a href="#punteros">Cómo se ve un puntero en el volcado</a></li>
+                        <li><a href="#espacio">Espacio libre y alineación</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="bus">1. El bus de direcciones de 32 bits</h2>
+
+            <p>El procesador <strong>ARM7TDMI</strong> de la GBA direcciona un espacio de 32 bits, pero el hardware solo decodifica el <strong>nibble alto</strong> (el segundo dígito hexadecimal) de la dirección:</p>
+
+            <ul>
+                <li><strong>Organización por regiones:</strong> El mapa entero se divide en bloques de <code>0x01000000</code> bytes.</li>
+                <li><strong>Identificación rápida:</strong> El segundo dígito te indica al instante el tipo de memoria. Por ejemplo, <code>0x02...</code> es siempre <strong>WRAM externa</strong> y <code>0x08...</code> es siempre <strong>ROM</strong>. Es la única pista necesaria para saber a dónde apunta un puntero.</li>
+            </ul>
+
+            <p><strong>Comportamiento de Espejo (Mirroring):</strong></p>
+            <p>Las regiones físicas no ocupan todo el espacio direccionable asignado. Por ejemplo, la <strong>IWRAM</strong> ocupa solo 32 KiB dentro de un rango disponible de 16 MiB, lo que provoca que la memoria física se repita en "espejo" cada 32 KiB:</p>
+
+            <ul>
+                <li>Un puntero a <code>0x03007F00</code> y otro a <code>0x0300FF00</code> acceden exactamente al mismo byte físico.</li>
+                <li><em>Consejo de edición:</em> Si un editor muestra una dirección aparentemente "inexistente" o fuera de rango, comprueba si se trata de un espejo antes de dar por corrupto el volcado.</li>
+            </ul>
+
+            <h2 id="mapa">2. Mapa de memoria completo</h2>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Regiones del bus de la GBA</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Dirección base</th>
+                            <th scope="col">Región</th>
+                            <th scope="col">Tamaño</th>
+                            <th scope="col">Bus</th>
+                            <th scope="col">Notas clave</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr"><code>0x00000000</code></td>
+                            <td><strong>BIOS</strong></td>
+                            <td class="num">16 KiB</td>
+                            <td class="num">32 bits</td>
+                            <td class="meta">Solo lectura. Accesible únicamente desde código BIOS.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x02000000</code></td>
+                            <td><strong>EWRAM</strong> (WRAM externa)</td>
+                            <td class="num">256 KiB</td>
+                            <td class="num">16 bits</td>
+                            <td class="meta">Memoria amplia pero lenta (2 ciclos de espera).</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x03000000</code></td>
+                            <td><strong>IWRAM</strong> (WRAM interna)</td>
+                            <td class="num">32 KiB</td>
+                            <td class="num">32 bits</td>
+                            <td class="meta">Sin estados de espera. Alberga variables de acceso rápido.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x04000000</code></td>
+                            <td><strong>Registros E/S</strong></td>
+                            <td class="num">1 KiB</td>
+                            <td class="num">32 bits</td>
+                            <td class="meta">Control de vídeo, sonido, DMA, timers e ins.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x05000000</code></td>
+                            <td><strong>Palette RAM</strong></td>
+                            <td class="num">1 KiB</td>
+                            <td class="num">16 bits</td>
+                            <td class="meta">512 B para fondos + 512 B para sprites.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x06000000</code></td>
+                            <td><strong>VRAM</strong></td>
+                            <td class="num">96 KiB</td>
+                            <td class="num">16 bits</td>
+                            <td class="meta">64 KiB para fondos + 32 KiB para sprites.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x07000000</code></td>
+                            <td><strong>OAM</strong></td>
+                            <td class="num">1 KiB</td>
+                            <td class="num">32 bits</td>
+                            <td class="meta">Tabla de 128 atributos de objetos (8 B c/u).</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x08000000</code></td>
+                            <td><strong>ROM Cartucho</strong></td>
+                            <td class="num">32 MiB máx</td>
+                            <td class="num">16 bits</td>
+                            <td class="meta">Espera 0. <strong>El área principal de edición.</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0A000000</code></td>
+                            <td><strong>ROM (Espejo WS1)</strong></td>
+                            <td class="num">32 MiB máx</td>
+                            <td class="num">16 bits</td>
+                            <td class="meta">Mismos datos que la ROM, diferente temporización.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0C000000</code></td>
+                            <td><strong>ROM (Espejo WS2)</strong></td>
+                            <td class="num">32 MiB máx</td>
+                            <td class="num">16 bits</td>
+                            <td class="meta">Usado por llamadas DMA de sonido en ciertos títulos.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0E000000</code></td>
+                            <td><strong>SRAM / FLASH</strong></td>
+                            <td class="num">64 KiB</td>
+                            <td class="num">8 bits</td>
+                            <td class="meta">Partidas guardadas. Solo accesos byte a byte.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">Error clásico de desarrollo</span>
+                <p>La <strong>SRAM</strong> reside en un bus de 8 bits. Una instrucción de 16/32 bits como <code>LDRH</code> o <code>LDR</code> apuntando a <code>0x0E000000</code> devolverá datos basura en lugar de lanzar una excepción. Si un parche de guardado lee valores incoherentes, revisa el ancho de lectura del código antes de corregir el offset.</p>
+            </div>
+
+            <h2 id="conversion">3. Conversión entre offset de archivo y puntero</h2>
+
+            <p>Un archivo con extensión <code>.gba</code> es una copia exacta de los datos que la consola lee a partir de la dirección <code>0x08000000</code>. La conversión se calcula mediante fórmulas directas:</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>conversion.txt</span><span>ASCII</span></div>
+                <pre><code><span class="cmt">// 1. De offset de archivo a puntero de ejecución</span>
+puntero = offset + 0x08000000
+
+<span class="cmt">// 2. De puntero de ejecución a offset de archivo</span>
+offset  = puntero &amp; 0x01FFFFFF
+
+<span class="cmt">// Ejemplos prácticos</span>
+Offset  0x1E4038  ->  Puntero <span class="off">0x081E4038</span>
+Puntero 0x0824A1C0 -> Offset  <span class="off">0x24A1C0</span></code></pre>
+            </div>
+
+            <p><strong>¿Por qué usar la máscara <code>0x01FFFFFF</code> en lugar de restar?</strong><br>
+            Al aplicar una operación AND lógica con <code>0x01FFFFFF</code> se descartan automáticamente los bits de región. Esto permite resolver correctamente punteros que apunten a los espejos WS1 (<code>0x0A...</code>) o WS2 (<code>0x0C...</code>), traduciéndolos al offset físico correcto dentro del archivo <code>.gba</code>.</p>
+
+            <h2 id="punteros">4. Cómo se ve un puntero en el volcado</h2>
+
+            <p>La arquitectura GBA utiliza formato <strong>Little-Endian</strong> (el byte de menor peso se almacena en la dirección más baja):</p>
+
+            <ul>
+                <li>Un puntero a la dirección <code>0x081E4038</code> se graba invertido en el archivo como: <code>38 40 1E 08</code>.</li>
+                <li>La presencia del byte <code>08</code> al final, repetido de forma alineada cada 4 bytes, es la marca distintiva de una <strong>tabla de punteros</strong>.</li>
+            </ul>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>volcado 0x25C400</span><span>HEX</span></div>
+                <pre><code><span class="off">0025C400</span>  38 40 1E <span class="key">08</span>  9C 41 1E <span class="key">08</span>  |8@..<span class="cmt">.</span>A..|
+<span class="off">0025C410</span>  10 43 1E <span class="key">08</span>  74 44 1E <span class="key">08</span>  |.C..tD..|
+<span class="off">0025C420</span>  E8 45 1E <span class="key">08</span>  5C 47 1E <span class="key">08</span>  |.E..\G..|
+             ^^^^^^^^^^^     <span class="cmt">Columna con byte 08 = Tabla de punteros</span></code></pre>
+            </div>
+
+            <details class="reader-details">
+                <summary>Guía paso a paso: Rastrear una tabla de punteros</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><strong>Identifica el recurso:</strong> Localiza el dato que deseas modificar (texto, gráfico) y anota su offset de archivo.</li>
+                        <li><strong>Calcula el puntero:</strong> Súmale <code>0x08000000</code> para obtener la dirección en RAM.</li>
+                        <li><strong>Invierte los bytes:</strong> Transforma el resultado a Little-Endian (ej. <code>0x081E4038</code> &rarr; <code>38 40 1E 08</code>).</li>
+                        <li><strong>Busca en la ROM:</strong> Ejecuta una búsqueda hexadecimal de esa secuencia. Cada coincidencia indica un código o tabla que apunta a tu recurso.</li>
+                        <li><strong>Encuentra la tabla:</strong> Si la coincidencia está alineada a múltiplos de 4 bytes, retrocede en bloques de 4 bytes para hallar el origen de la tabla.</li>
+                    </ol>
+                    <p><em>Importante:</em> Si mueves un recurso a un espacio libre, debes actualizar la entrada correspondiente en la tabla de punteros. De lo contrario, el juego seguirá leyendo el recurso original sin aplicar tus cambios.</p>
+                </div>
+            </details>
+
+            <h2 id="espacio">5. Espacio libre y alineación</h2>
+
+            <p>Las ROMs de GBA suelen incluir áreas vacías al final del archivo formateadas con bytes <code>0xFF</code> o <code>0x00</code>. Estas áreas son ideales para insertar datos modificados o reubicados. Antes de escribir datos en ellas, ten en cuenta dos reglas esenciales:</p>
+
+            <ul>
+                <li><strong>Alineación a 4 Bytes:</strong> Todo dato referenciado por un puntero (y obligatoriamente si es código ejecutable ARM) debe estar alineado en una dirección divisible por 4. Un salto a una dirección no alineada provocará ejecuciones erróneas o lecturas corruptas.</li>
+                <li><strong>Tamaño de ROM válido:</strong> Ampliar la ROM agregando datos al final es tolerado por los emuladores, pero las consolas reales exigen que el tamaño total del archivo sea una potencia de 2 válida (ej. 4MB, 8MB, 16MB, 32MB).</li>
+            </ul>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Regla práctica de seguridad</span>
+                <p>Asegúrate de contar con un bloque de al menos 16 bytes continuos de relleno y mantén 1 byte de margen libre a cada extremo. Algunas rutinas de optimización leen datos en bloques de mayor tamaño; si colocas un dato pegado al límite de un bloque adyacente, podrías causar corrupción silenciosa.</p>
+            </div>
+
+            <footer class="reader-footer">
+                <h2 id="referencias">Referencias</h2>
+                <ul class="reader-sources">
+                    <li>GBATEK, referencia técnica del hardware de Game Boy Advance (Martin Korth).</li>
+                    <li>Tonc, tutorial de programación para GBA (Jasper Vijn).</li>
+                    <li>ARM7TDMI Technical Reference Manual, ARM Limited.</li>
+                </ul>
+
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="../index.html#catalogo">&lt;&lt; Catálogo</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="gba-02-paletas-y-graficos.html">Paletas y gráficos &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // GBA/0x01_MAPA_MEMORIA // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Capa de administración: vinculada mediante admin.js a los IDs dinámicos del DOM para la gestión de modales y autenticación -->
+
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la plataforma: deben cargarse secuencialmente para respetar dependencias de la consola y la sesión de administración -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

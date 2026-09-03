@@ -1,0 +1,304 @@
+/* --- Dispositivos móviles y tablets verticales (hasta 768px) --- */
+@media (max-width: 768px) {
+
+    /* Control de desbordamiento horizontal y desbordamiento de texto */
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .section-title,
+    .hero h1,
+    .card-manual h3,
+    .form-group label,
+    .adm-panel-head h2,
+    .adm-modal h2 {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        hyphens: none;
+    }
+
+    .section-title {
+        font-size: 1.75rem;
+        line-height: 1.25;
+        margin-bottom: 2rem;
+    }
+
+    /* Cabecera, logo y menú de navegación táctil */
+    .main-header {
+        padding: 0.75rem 1rem 0.5rem;
+        gap: 0.4rem;
+    }
+
+    .logo {
+        font-size: 1.9rem;
+        line-height: 1.1;
+    }
+
+    .main-nav {
+        width: 100%;
+    }
+
+    .main-nav ul {
+        gap: 0.25rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .main-nav a {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 0.9rem;
+    }
+
+    /* Sección principal o portada */
+    .hero {
+        min-height: auto;
+        padding: 3rem 1.25rem;
+    }
+
+    .hero h1 {
+        font-size: 2.1rem;
+        line-height: 1.2;
+        letter-spacing: 1px;
+        margin-bottom: 1.25rem;
+    }
+
+    .hero p {
+        text-align: left;
+        margin-bottom: 2rem;
+    }
+
+    /* Botón principal ajustado a ancho completo */
+    .btn-neon {
+        display: block;
+        width: 100%;
+        min-height: 48px;
+        padding: 13px 20px;
+        text-align: center;
+        letter-spacing: 1px;
+    }
+
+    /* Catálogo de manuales, filtros y tarjetas a una columna */
+    .catalog-section {
+        padding: 3rem 1.25rem;
+    }
+
+    .tabs-container {
+        gap: 0.6rem;
+        margin-bottom: 2rem;
+    }
+
+    .tab-btn {
+        flex: 1 1 calc(50% - 0.6rem);
+        min-height: 44px;
+        padding: 10px 8px;
+        font-size: 0.85rem;
+    }
+
+    .grid-manuales {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .card-manual {
+        padding: 1.4rem 1.25rem;
+    }
+
+    .card-manual h3 {
+        font-size: 1.1rem;
+        line-height: 1.35;
+    }
+
+    .manual-desc {
+        min-height: 0;
+        margin-bottom: 1.25rem;
+    }
+
+    .link-download {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+    }
+
+    /* Formulario de contacto y tamaño de letra anti-zoom móvil */
+    .contact-section {
+        padding: 3rem 1.25rem;
+    }
+
+    .contact-form,
+    .contact-subtitle {
+        max-width: 100%;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px;
+        padding: 13px 12px;
+    }
+
+    .form-group textarea {
+        min-height: 140px;
+    }
+
+    /* Pie de página y botón de administración */
+    .main-footer {
+        padding: 2.5rem 1.25rem;
+    }
+
+    .adm-trigger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 10px 16px;
+    }
+
+    /* Capa y ventana modal del panel de administración */
+    .adm-overlay {
+        padding: 0.75rem;
+    }
+
+    .adm-modal {
+        max-width: 100%;
+        padding: 1.5rem 1.25rem;
+    }
+
+    .adm-modal h2 {
+        font-size: 1.5rem;
+    }
+
+    .adm-head-actions {
+        flex-wrap: wrap;
+    }
+
+    .adm-btn {
+        min-height: 44px;
+    }
+
+    /* Vista de lectura y margen de desplazamiento */
+    .reader-page {
+        padding-bottom: 3rem;
+    }
+
+    .reader-container [id] {
+        scroll-margin-top: 7.5rem;
+    }
+}
+
+/* --- Moviles muy estrechos (hasta 400px) --- */
+@media (max-width: 400px) {
+
+    .logo {
+        font-size: 1.65rem;
+        letter-spacing: 1px;
+    }
+
+    .main-nav a {
+        padding: 0 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    .hero h1 {
+        font-size: 1.85rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+    }
+
+    .tab-btn {
+        flex: 1 1 100%;
+    }
+}
+
+/* --- Orientación horizontal en pantalla móvil (Landscape) --- */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+
+    .main-header {
+        position: static;
+        flex-direction: row;
+        padding: 0.5rem 1rem;
+    }
+
+    .main-nav {
+        width: auto;
+    }
+
+    .hero {
+        min-height: auto;
+        padding: 2rem 1.25rem;
+    }
+
+    .grid-manuales {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* --- Respuesta táctil en pantallas sin puntero mouse --- */
+@media (hover: none) {
+
+    .tab-btn:active,
+    .btn-neon:active,
+    .adm-btn:active {
+        transform: scale(0.98);
+    }
+
+    .card-manual:active {
+        border-left-color: var(--neon-verde);
+    }
+}
+
+/* --- Accesibilidad para reducir movimiento --- */
+@media (prefers-reduced-motion: reduce) {
+
+    .tab-btn:active,
+    .btn-neon:active,
+    .adm-btn:active {
+        transform: none;
+    }
+}
+/* --- Asistente de IA en pantallas pequeñas --- */
+@media (max-width: 768px) {
+
+    .assistant-section {
+        padding: 3rem 1rem;
+    }
+
+    .assistant-log {
+        max-height: 55vh;
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .assistant-bar {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .assistant-estado {
+        margin-left: auto;
+    }
+
+    /* Campo y boton pasan a columna para no comprimir el area de escritura */
+    .assistant-input-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .assistant-input-row .btn-neon {
+        width: 100%;
+        padding: 12px;
+    }
+
+    .ia-msg-cuerpo {
+        font-size: 0.85rem;
+    }
+
+    .ia-code code {
+        font-size: 0.75rem;
+    }
+}

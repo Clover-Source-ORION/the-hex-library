@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Hex Library | Manuales Técnicos & ROM Hacking</title>
+    
+    <link rel="stylesheet" href="css/style.css?v=3">
+    <link rel="stylesheet" href="css/admin.css?v=3">
+    <link rel="stylesheet" href="css/movil.css?v=1">
+
+    <!-- Tipografías: Fira Code y VT323 vía Google Fonts (Licencia SIL Open Font License) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1 data-editable="hero.titulo">Documentación Tecnica del ROM Hacking</h1>
+            <p data-editable="hero.parrafo">Descubre el funcionamiento interno de tus juegos favoritos de Nintendo. Desde el análisis hexadecimal en sistemas de Game Boy Advance hasta las estructuras de memoria en Nintendo Switch. Manuales traducidos al español, desensamblados y explicados paso a paso.</p>
+            <a href="#catalogo" class="btn-neon" data-editable="hero.boton">EXPLORAR REGISTROS</a>
+        </div>
+    </section>
+
+    <main id="catalogo" class="catalog-section">
+        <h2 class="section-title" data-editable="catalogo.titulo">&gt;_ REGISTROS_DE_MEMORIA</h2>
+        
+        <div class="tabs-container">
+            <button type="button" class="tab-btn active" data-filtro="todas" aria-selected="true">TODAS</button>
+            <button type="button" class="tab-btn" data-filtro="gba" aria-selected="false">GBA</button>
+            <button type="button" class="tab-btn" data-filtro="nds-3ds" aria-selected="false">NDS / 3DS</button>
+            <button type="button" class="tab-btn" data-filtro="switch" aria-selected="false">SWITCH</button>
+        </div>
+        
+        <!-- El valor de data-consola debe coincidir exactamente con los selectores data-filtro (gba | nds-3ds | switch) consumidos por js/main.js -->
+        <div class="grid-manuales">
+
+            <div class="card-manual" data-consola="gba">
+                <div class="manual-badge gba">GBA</div>
+                <h3 data-editable="manual.1.titulo">Mapa de Memoria y Offsets</h3>
+                <p class="manual-desc" data-editable="manual.1.desc">Regiones del bus de 32 bits, conversión entre offset de archivo y puntero de ejecución, y cómo reconocer una tabla de punteros dentro de un volcado hexadecimal.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="lecturas/gba-01-mapa-de-memoria.html" class="link-download" data-editable="manual.1.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <div class="card-manual" data-consola="gba">
+                <div class="manual-badge gba">GBA</div>
+                <h3 data-editable="manual.2.titulo">Paletas BGR555 y Tiles</h3>
+                <p class="manual-desc" data-editable="manual.2.desc">Formato de color de 16 bits, conversión de 8 a 5 bits por canal, reparto de la Palette RAM y codificación de tiles de 4 y 8 bits por píxel.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="lecturas/gba-02-paletas-y-graficos.html" class="link-download" data-editable="manual.2.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <div class="card-manual" data-consola="gba">
+                <div class="manual-badge gba">GBA</div>
+                <h3 data-editable="manual.3.titulo">Cabecera del Cartucho</h3>
+                <p class="manual-desc" data-editable="manual.3.desc">Los 192 primeros bytes de una ROM: campos, código de juego por región y cálculo del complemento de control que valida el BIOS al arrancar.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Traducido</span></div>
+                <a href="lecturas/gba-03-cabecera-de-cartucho.html" class="link-download" data-editable="manual.3.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <div class="card-manual" data-consola="nds-3ds">
+                <div class="manual-badge nds">NDS</div>
+                <h3 data-editable="manual.4.titulo">Cabecera y Sistema de Archivos</h3>
+                <p class="manual-desc" data-editable="manual.4.desc">Tablas FAT y FNT del cartucho, overlays del procesador ARM9 y el flujo completo de desempaquetado y reempaquetado que sustituye a la edición hexadecimal.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="lecturas/nds-01-cabecera-y-sistema-de-archivos.html" class="link-download" data-editable="manual.4.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <div class="card-manual" data-consola="nds-3ds">
+                <div class="manual-badge nds">NDS</div>
+                <h3 data-editable="manual.5.titulo">Contenedores NARC y Compresión</h3>
+                <p class="manual-desc" data-editable="manual.5.desc">Firmas invertidas del SDK Nitro, estructura interna de un contenedor NARC y los formatos de compresión LZ77, Huffman y RLE que envuelven casi todos los recursos.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="lecturas/nds-02-contenedores-narc-y-compresion.html" class="link-download" data-editable="manual.5.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <div class="card-manual" data-consola="nds-3ds">
+                <div class="manual-badge nds">NDS</div>
+                <h3 data-editable="manual.6.titulo">Gráficos Nitro y Texturas 3DS</h3>
+                <p class="manual-desc" data-editable="manual.6.desc">Los formatos NCLR, NCGR, NSCR y NCER que reparten una sola imagen en cuatro archivos, más las texturas BCLIM y BFLIM con entrelazado Morton en 3DS.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Traducido</span></div>
+                <a href="lecturas/nds-03-graficos-nitro.html" class="link-download" data-editable="manual.6.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <div class="card-manual" data-consola="switch">
+                <div class="manual-badge switch">SWITCH</div>
+                <h3 data-editable="manual.7.titulo">Estructura de Capas de Archivos</h3>
+                <p class="manual-desc" data-editable="manual.7.desc">Superposición de RomFS: Title ID, jerarquía de carpetas, resolución de rutas al abrir un archivo y por qué dos modificaciones pueden entrar en conflicto.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>Verificado</span></div>
+                <a href="lecturas/switch-01-layeredfs.html" class="link-download" data-editable="manual.7.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <div class="card-manual" data-consola="switch">
+                <div class="manual-badge switch">SWITCH</div>
+                <h3 data-editable="manual.8.titulo">Archivos de Guardado</h3>
+                <p class="manual-desc" data-editable="manual.8.desc">Ciclo de extracción y restauración de partidas, estructura por bloques, comprobaciones de integridad y localización de un campo por comparación diferencial.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>En Traducción</span></div>
+                <a href="lecturas/switch-02-archivos-de-guardado.html" class="link-download" data-editable="manual.8.enlace">LEER_MANUAL_</a>
+            </div>
+
+            <div class="card-manual" data-consola="switch">
+                <div class="manual-badge switch">SWITCH</div>
+                <h3 data-editable="manual.9.titulo">Parches de Código IPS</h3>
+                <p class="manual-desc" data-editable="manual.9.desc">Parcheo de módulos ejecutables en memoria: Build ID, formato IPS e IPS32, conversión de direcciones virtuales a offsets y diferencias frente a los trucos de RAM.</p>
+                <div class="manual-meta">Idioma: <span>ES</span> | Estado: <span>En Traducción</span></div>
+                <a href="lecturas/switch-03-parches-de-codigo.html" class="link-download" data-editable="manual.9.enlace">LEER_MANUAL_</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Asistente IA: la interfaz se controla desde js/main.js contra POST /api/asistente -->
+    <section id="asistente-ia" class="assistant-section">
+        <h2 class="section-title" data-editable="asistente.titulo">&gt;_ CONSULTAR_BYTE_AI</h2>
+        <p class="contact-subtitle" data-editable="asistente.subtitulo">Terminal conectada a un modelo entrenado en documentación técnica. Pregunta por offsets, estructuras de datos, mapeo de memoria RAM/ROM o comandos de scripting XSE.</p>
+
+        <div class="assistant-console">
+            <div class="assistant-bar">
+                <span class="assistant-dot"></span>
+                <span class="assistant-titulo">BYTE // v1.0</span>
+                <span id="ia-estado-servicio" class="assistant-estado" data-estado="desconocido">CONECTANDO...</span>
+            </div>
+
+            <!-- Historial de la conversación. Los mensajes se insertan como nodos de texto desde JS -->
+            <div id="ia-historial" class="assistant-log" role="log" aria-live="polite" aria-label="Historial de la conversacion">
+                <article class="ia-msg ia-msg-model">
+                    <header class="ia-msg-rol">BYTE</header>
+                    <div class="ia-msg-cuerpo">
+                        <p data-editable="asistente.bienvenida">Terminal lista. Formula tu consulta técnica: conversión de punteros, cabeceras de cartucho, tablas de datos, compresión LZ77 o comandos XSE.</p>
+                    </div>
+                </article>
+            </div>
+
+            <form id="ia-form" class="assistant-form" novalidate>
+                <label for="ia-entrada" class="assistant-label" data-editable="asistente.etiquetaEntrada">QUERY_INPUT (Consulta):</label>
+                <div class="assistant-input-row">
+                    <textarea id="ia-entrada" name="ia-entrada" rows="3" maxlength="2000"
+                        placeholder="Ej. ¿Cómo convierto el offset 0x3B4E80 en un puntero válido para la ROM?"
+                        aria-describedby="ia-status"></textarea>
+                    <button type="submit" id="ia-enviar" class="btn-neon" data-editable="asistente.boton">TRANSMITIR_QUERY</button>
+                </div>
+                <p id="ia-status" class="assistant-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+
+        <p class="assistant-aviso manual-meta" data-editable="asistente.aviso">// El modelo puede equivocarse en offsets concretos: verifica siempre contra tu propio volcado antes de escribir en la ROM.</p>
+    </section>
+
+    <section id="contacto" class="contact-section">
+        <h2 class="section-title" data-editable="contacto.titulo">&gt;_ INTERCEPTAR_CANAL_DE_TEXTO</h2>
+        <p class="contact-subtitle" data-editable="contacto.subtitulo">¿Encontraste un error hexadecimal en las traducciones o requieres documentación de un offset específico? Envía una solicitud al administrador.</p>
+        
+        <form id="contact-form" class="contact-form" action="/api/comentarios" method="POST" novalidate>
+            <div class="form-group">
+                <label for="name" data-editable="contacto.etiquetaUsuario">ID_USUARIO (Nombre):</label>
+                <input type="text" id="name" name="name" placeholder="Ej. Clover_0x" maxlength="60" autocomplete="name" required>
+                <small class="manual-meta" data-error-for="name" role="alert" hidden></small>
+            </div>
+            <div class="form-group">
+                <label for="email" data-editable="contacto.etiquetaCorreo">CANAL_COMUNICACIÓN (Correo):</label>
+                <input type="email" id="email" name="email" placeholder="correo@ejemplo.com" maxlength="254" autocomplete="email" required>
+                <small class="manual-meta" data-error-for="email" role="alert" hidden></small>
+            </div>
+            <div class="form-group">
+                <label for="topic" data-editable="contacto.etiquetaCategoria">CATEGORÍA_REPORTE:</label>
+                <select id="topic" name="topic" required>
+                    <option value="" disabled selected>Selecciona un protocolo...</option>
+                    <option value="error">Error de traducción o fe de erratas</option>
+                    <option value="request">Solicitud de nuevo manual técnico</option>
+                    <option value="bug">Fallo lógico en el backend/asistente</option>
+                </select>
+                <small class="manual-meta" data-error-for="topic" role="alert" hidden></small>
+            </div>
+            <div class="form-group">
+                <label for="message" data-editable="contacto.etiquetaMensaje">DATA_PACKET (Mensaje):</label>
+                <textarea id="message" name="message" rows="5" placeholder="Escribe los detalles técnicos de tu solicitud o el offset afectado..." maxlength="2000" required></textarea>
+                <small class="manual-meta" data-error-for="message" role="alert" hidden></small>
+            </div>
+
+            <!-- Honeypot antispam: trampa para bots. El backend debe rechazar peticiones con este campo poblado -->
+            <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" hidden>
+            <button type="submit" class="btn-neon" data-editable="contacto.boton">TRANSMITIR_PAQUETE</button>
+
+            <p id="form-status" class="contact-subtitle" role="status" aria-live="polite" hidden></p>
+
+            <!-- Plantilla de texto inerte leída dinámicamente por JS tras respuesta exitosa -->
+            <span data-editable="contacto.confirmacion" hidden>Paquete recibido. El administrador revisara tu solicitud.</span>
+        </form>
+    </section>
+
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable // Mínimo 15 commits en ejecución.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Capa Admin DOM: la protección real la ejercen las respuestas 401 del backend (/api/*) si no existe sesión válida -->
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticacion requerida para el modulo de administracion.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmision(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorias y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- consola.js DEBE cargarse antes para interceptar invocaciones a window.console antes de ejecutar los demás scripts -->
+    <script src="js/consola.js?v=3"></script>
+    <script src="js/main.js?v=3"></script>
+    <script src="js/admin.js?v=3"></script>
+</body>
+</html>
