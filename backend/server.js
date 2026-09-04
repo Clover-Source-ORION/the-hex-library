@@ -10,6 +10,9 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
+// Permitir peticiones desde cualquier origen (incluyendo GitHub Pages)
+app.use(cors());
+
 // Configuración de base de datos y rutas
 const db = require('./config/db');
 const comentariosRoutes = require('./routes/comentarios.routes');
