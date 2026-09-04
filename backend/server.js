@@ -10,8 +10,8 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
-// Permitir peticiones desde cualquier origen (incluyendo GitHub Pages)
-app.use(cors());
+// Inicialización de la aplicación Express
+const app = express();
 
 // Configuración de base de datos y rutas
 const db = require('./config/db');
@@ -28,8 +28,6 @@ const {
   notFound,
   errorHandler
 } = require('./middlewares/errorHandler');
-
-const app = express();
 
 // Configuración de puerto y directorio estático del frontend
 const PORT_ENV = Number(process.env.PORT);
@@ -51,7 +49,7 @@ const origenesPermitidos = (process.env.ALLOWED_ORIGINS || '')
 // Configuración de CORS para solicitudes seguras con credenciales
 app.use(
   cors({
-    origin: origenesPermitidos.length > 0 ? origenesPermitidos : false,
+    origin: origenesPermitidos.length > 0 ? origenesPermitidos : true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
     maxAge: 600
