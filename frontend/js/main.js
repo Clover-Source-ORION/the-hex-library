@@ -52,6 +52,9 @@
               var error = new Error(cuerpo.mensaje || 'Error ' + respuesta.status);
               error.status = respuesta.status;
               error.errores = cuerpo.errores || null;
+              // Algunas respuestas de error traen datos utiles (por ejemplo el
+              // 503 del asistente indica si la clave puede darse de alta).
+              error.data = cuerpo.data || null;
               throw error;
             }
             return cuerpo;
@@ -475,24 +478,229 @@
     caja.setAttribute('data-estado', tipo || 'info');
   }
 
-  // Consulta la disponibilidad del servicio para avisar antes de escribir.
-  function comprobarEstadoServicio() {
+  // Pinta el indicador de estado de la barra de la terminal.
+  function marcarIndicador(texto, estado) {
     var indicador = document.getElementById('ia-estado-servicio');
     if (!indicador) return;
+    indicador.textContent = texto;
+    indicador.setAttribute('data-estado', estado || 'desconocido');
+  }
+
+  // Muestra u oculta el panel de alta de credencial.
+  function mostrarConfig(visible) {
+    var panel = document.getElementById('ia-config');
+    if (panel) panel.hidden = !visible;
+  }
+
+  // Consulta la disponibilidad del servicio para avisar antes de escribir.
+  // Si falta la clave y el servidor puede escribir su .env, en lugar de dejar
+  // al usuario bloqueado se le ofrece cargarla desde la propia pagina.
+  function comprobarEstadoServicio() {
+    if (!document.getElementById('ia-estado-servicio')) return;
 
     peticion('/asistente/estado', { method: 'GET' })
       .then(function () {
-        indicador.textContent = 'OPERATIVO';
-        indicador.setAttribute('data-estado', 'ok');
+        marcarIndicador('OPERATIVO', 'ok');
+        mostrarConfig(false);
       })
       .catch(function (error) {
         var sinClave = error.status === 503;
-        indicador.textContent = sinClave ? 'SIN_CONFIGURAR' : 'FUERA_DE_LINEA';
-        indicador.setAttribute('data-estado', 'error');
-        if (sinClave) {
+        var datos = error.data || {};
+
+        marcarIndicador(sinClave ? 'SIN_CONFIGURAR' : 'FUERA_DE_LINEA', 'error');
+
+        if (!sinClave) return;
+
+        if (datos.configurable) {
+          mostrarConfig(true);
+          estadoAsistente(
+            'Falta GEMINI_API_KEY. Cargala en el bloque CREDENCIAL_NO_DETECTADA para activar a BYTE.',
+            'error'
+          );
+        } else {
           estadoAsistente('El asistente no esta configurado en este servidor.', 'error');
         }
       });
+  }
+
+  // ==========================================================================
+  // ALTA DE CREDENCIAL (POST /api/asistente/configurar)
+  // ==========================================================================
+
+  // Caja de estado propia del formulario de credencial.
+  function estadoConfig(mensaje, tipo) {
+    var caja = document.getElementById('ia-config-status');
+    if (!caja) return;
+    caja.textContent = mensaje ? '> ' + mensaje : '';
+    caja.hidden = !mensaje;
+    caja.setAttribute('data-estado', tipo || 'info');
+  }
+
+  // Comprueba si ya existe sesion de administrador para no pedir el login dos veces.
+  function haySesionAdmin() {
+    return peticion('/admin/session', { method: 'GET' })
+      .then(function (respuesta) {
+        return !!(respuesta.data && respuesta.data.autenticado);
+      })
+      .catch(function () { return false; });
+  }
+
+  // Conecta el formulario que graba GEMINI_API_KEY en backend/.env.
+  function inicializarConfigAsistente() {
+    var panel = document.getElementById('ia-config');
+    var formulario = document.getElementById('ia-config-form');
+    if (!panel || !formulario) return;
+
+    var campoClave = document.getElementById('ia-config-clave');
+    var campoModelo = document.getElementById('ia-config-modelo');
+    var campoUsuario = document.getElementById('ia-config-usuario');
+    var campoPassword = document.getElementById('ia-config-password');
+    var bloqueAuth = document.getElementById('ia-config-auth');
+    var boton = document.getElementById('ia-config-guardar');
+    var botonVer = document.getElementById('ia-config-ver');
+    var campoForzar = document.getElementById('ia-config-forzar');
+    var cajaForzar = document.getElementById('ia-config-forzar-caja');
+    var enviando = false;
+
+    // Alternancia de visibilidad: pegar una clave a ciegas invita a errores.
+    if (botonVer && campoClave) {
+      botonVer.addEventListener('click', function () {
+        var oculta = campoClave.type === 'password';
+        campoClave.type = oculta ? 'text' : 'password';
+        botonVer.textContent = oculta ? 'OCULTAR' : 'VER';
+        botonVer.setAttribute('aria-pressed', oculta ? 'true' : 'false');
+        campoClave.focus();
+      });
+    }
+
+    // El bloque de login solo aparece si todavia no hay sesion abierta.
+    haySesionAdmin().then(function (activa) {
+      if (bloqueAuth) bloqueAuth.hidden = activa;
+    });
+
+    function bloquear(activo) {
+      enviando = activo;
+      if (!boton) return;
+      boton.disabled = activo;
+      boton.textContent = activo ? 'GRABANDO...' : 'GRABAR_CREDENCIAL';
+    }
+
+    function limpiarSecretos() {
+      if (campoClave) {
+        campoClave.value = '';
+        campoClave.type = 'password';
+      }
+      if (campoPassword) campoPassword.value = '';
+      if (botonVer) {
+        botonVer.textContent = 'VER';
+        botonVer.setAttribute('aria-pressed', 'false');
+      }
+    }
+
+    function guardar() {
+      if (enviando) return;
+
+      var clave = limpiar(campoClave ? campoClave.value : '');
+      var modelo = limpiar(campoModelo ? campoModelo.value : '');
+
+      if (clave.length < 20) {
+        estadoConfig('Pega la clave completa de Google AI Studio (minimo 20 caracteres).', 'error');
+        if (campoClave) {
+          campoClave.setAttribute('aria-invalid', 'true');
+          campoClave.focus();
+        }
+        return;
+      }
+
+      if (campoClave) campoClave.removeAttribute('aria-invalid');
+
+      bloquear(true);
+      estadoConfig('Comprobando la sesion de administrador...', 'info');
+
+      haySesionAdmin()
+        .then(function (activa) {
+          if (activa) return true;
+
+          // Sin sesion: se pide el login aqui mismo, sin abrir el panel admin.
+          if (bloqueAuth) bloqueAuth.hidden = false;
+
+          var usuario = limpiar(campoUsuario ? campoUsuario.value : '');
+          var password = campoPassword ? campoPassword.value : '';
+
+          if (!usuario || !password) {
+            var falta = new Error('Autenticate como administrador para grabar la credencial.');
+            falta.status = 401;
+            throw falta;
+          }
+
+          estadoConfig('Autenticando...', 'info');
+
+          return peticion('/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario: usuario, password: password })
+          }).then(function () { return true; });
+        })
+        .then(function () {
+          estadoConfig('Verificando la clave contra la API de Gemini...', 'info');
+
+          var cuerpo = { apiKey: clave };
+          if (modelo) cuerpo.modelo = modelo;
+          if (campoForzar && campoForzar.checked) cuerpo.forzar = true;
+
+          return peticion('/asistente/configurar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cuerpo),
+            timeoutMs: 20000
+          });
+        })
+        .then(function (respuesta) {
+          var datos = respuesta.data || {};
+
+          // La clave no se conserva en el DOM una vez grabada.
+          limpiarSecretos();
+
+          marcarIndicador(datos.verificada ? 'OPERATIVO' : 'SIN_VERIFICAR', datos.verificada ? 'ok' : 'alerta');
+          estadoAsistente('', 'info');
+
+          panel.setAttribute('data-estado', 'ok');
+          formulario.hidden = true;
+
+          var titulo = panel.querySelector('.ia-config-titulo');
+          if (titulo) titulo.textContent = '>_ CREDENCIAL_REGISTRADA';
+
+          var descripcion = panel.querySelector('.ia-config-desc');
+          if (descripcion) {
+            descripcion.textContent =
+              'Clave ' + (datos.clave || '') + ' escrita en backend/.env con el modelo ' +
+              (datos.modelo || '') + '. Ya puedes consultar a BYTE en la terminal de abajo.';
+          }
+
+          estadoConfig(respuesta.mensaje + (datos.aviso ? ' ' + datos.aviso : ''), datos.verificada ? 'exito' : 'info');
+          console.info('[asistente] Credencial almacenada en backend/.env (modelo ' + (datos.modelo || '') + ').');
+        })
+        .catch(function (error) {
+          if (error.status === 401 && bloqueAuth) bloqueAuth.hidden = false;
+
+          // Si el servidor no pudo confirmar la clave se ofrece grabarla igual:
+          // en redes cerradas la comprobacion contra Google nunca va a pasar.
+          if (error.data && error.data.puedeForzar && cajaForzar) cajaForzar.hidden = false;
+
+          var detalle = error.errores && error.errores.apiKey ? error.errores.apiKey : error.message;
+          estadoConfig(detalle, 'error');
+          console.warn('[asistente] Alta de credencial fallida: ' + detalle);
+        })
+        .finally(function () {
+          if (!formulario.hidden) bloquear(false);
+          else enviando = false;
+        });
+    }
+
+    formulario.addEventListener('submit', function (evento) {
+      evento.preventDefault();
+      guardar();
+    });
   }
 
   // Gestiona el ciclo completo de envio, carga y renderizado del asistente.
@@ -605,6 +813,7 @@
       }
     });
 
+    inicializarConfigAsistente();
     comprobarEstadoServicio();
   }
 

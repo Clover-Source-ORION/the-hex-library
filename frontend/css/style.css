@@ -356,6 +356,190 @@ body {
     border-top: 1px solid #1a1a2e;
 }
 
+/* --- Alta de credencial del asistente (aparece solo si falta la API key) --- */
+.ia-config {
+    max-width: 900px;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background-color: var(--bg-secundario);
+    border: 1px solid #3a2a12;
+    border-left: 3px solid #ffb020;
+    border-radius: 6px;
+}
+
+.ia-config-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.ia-config-chip {
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    color: #ffb020;
+    border: 1px solid #3a2a12;
+    border-radius: 3px;
+    padding: 2px 8px;
+}
+
+.ia-config-titulo {
+    font-family: var(--fuente-tech);
+    font-size: 1rem;
+    color: #ffb020;
+    letter-spacing: 1px;
+}
+
+.ia-config-desc {
+    font-size: 0.85rem;
+    color: var(--texto-mutado);
+    margin-bottom: 1.25rem;
+}
+
+.ia-config-desc code {
+    color: var(--neon-cian);
+    background-color: rgba(0, 243, 255, 0.07);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.ia-config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.ia-config-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border: 1px dashed #1a1a2e;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.ia-config-auth legend {
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    color: var(--texto-mutado);
+    padding: 0 0.5rem;
+}
+
+.ia-config-campo label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--neon-cian);
+    margin-bottom: 0.4rem;
+    letter-spacing: 1px;
+}
+
+.ia-config-campo input {
+    width: 100%;
+    background-color: var(--bg-principal);
+    border: 1px solid #1a1a2e;
+    border-radius: 4px;
+    padding: 10px 12px;
+    color: var(--texto-brillante);
+    font-family: var(--fuente-tech);
+    font-size: 0.85rem;
+}
+
+.ia-config-campo input:focus {
+    outline: none;
+    border-color: var(--neon-verde);
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+}
+
+.ia-config-campo input[aria-invalid="true"] {
+    border-color: #ff395c;
+}
+
+.ia-config-secreto {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.ia-config-btn {
+    background: transparent;
+    border: 1px solid #1a1a2e;
+    border-radius: 4px;
+    color: var(--texto-mutado);
+    font-family: var(--fuente-tech);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    padding: 0 14px;
+    cursor: pointer;
+}
+
+.ia-config-btn:hover,
+.ia-config-btn[aria-pressed="true"] {
+    color: var(--neon-cian);
+    border-color: var(--neon-cian);
+}
+
+.ia-config-forzar {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.78rem;
+    color: #ffb020;
+    cursor: pointer;
+}
+
+.ia-config-forzar input { margin-top: 0.25rem; }
+
+.ia-config-acciones {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.ia-config-acciones .btn-neon {
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--fuente-tech);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.ia-config-acciones .btn-neon:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.ia-config-enlace {
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    color: var(--texto-mutado);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--texto-mutado);
+}
+
+.ia-config-enlace:hover {
+    color: var(--neon-cian);
+    border-bottom-color: var(--neon-cian);
+}
+
+.assistant-estado[data-estado="alerta"] { color: #ffb020; }
+.ia-config[data-estado="ok"] {
+    border-color: #14361a;
+    border-left-color: var(--neon-verde);
+}
+
+.ia-config[data-estado="ok"] .ia-config-titulo,
+.ia-config[data-estado="ok"] .ia-config-chip {
+    color: var(--neon-verde);
+}
+
+.ia-config[data-estado="ok"] .ia-config-chip { border-color: #14361a; }
+
+.ia-config .assistant-status { margin-top: 1rem; }
+
+
 .assistant-console {
     max-width: 900px;
     background-color: var(--bg-secundario);

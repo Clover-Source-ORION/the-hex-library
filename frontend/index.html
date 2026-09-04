@@ -129,6 +129,70 @@
         <h2 class="section-title" data-editable="asistente.titulo">&gt;_ CONSULTAR_BYTE_AI</h2>
         <p class="contact-subtitle" data-editable="asistente.subtitulo">Terminal conectada a un modelo entrenado en documentación técnica. Pregunta por offsets, estructuras de datos, mapeo de memoria RAM/ROM o comandos de scripting XSE.</p>
 
+        <!-- Alta de credencial: main.js lo revela solo si GET /api/asistente/estado
+             responde 503 y el servidor puede escribir backend/.env -->
+        <div id="ia-config" class="ia-config" hidden>
+            <div class="ia-config-cabecera">
+                <span class="ia-config-chip">GEMINI_API_KEY</span>
+                <h3 class="ia-config-titulo">&gt;_ CREDENCIAL_NO_DETECTADA</h3>
+            </div>
+
+            <p class="ia-config-desc">
+                BYTE esta desconectado porque <code>backend/.env</code> no tiene una clave de
+                Google AI Studio. Pegala aqui y el servidor la escribira en el archivo: no hace
+                falta editar el codigo ni reiniciar el proceso. La operacion exige sesion de
+                administrador y la clave nunca vuelve a mostrarse completa.
+            </p>
+
+            <form id="ia-config-form" class="ia-config-form" novalidate>
+
+                <fieldset id="ia-config-auth" class="ia-config-auth" hidden>
+                    <legend>ACCESO_ADMINISTRADOR</legend>
+                    <div class="ia-config-campo">
+                        <label for="ia-config-usuario">ID_ADMINISTRADOR:</label>
+                        <input type="text" id="ia-config-usuario" name="ia-config-usuario"
+                            autocomplete="username" maxlength="64" spellcheck="false">
+                    </div>
+                    <div class="ia-config-campo">
+                        <label for="ia-config-password">CLAVE_DE_ACCESO:</label>
+                        <input type="password" id="ia-config-password" name="ia-config-password"
+                            autocomplete="current-password" maxlength="128">
+                    </div>
+                </fieldset>
+
+                <div class="ia-config-campo">
+                    <label for="ia-config-clave">GEMINI_API_KEY:</label>
+                    <div class="ia-config-secreto">
+                        <input type="password" id="ia-config-clave" name="ia-config-clave"
+                            maxlength="200" spellcheck="false" autocomplete="off"
+                            placeholder="Pega aqui la clave de aistudio.google.com/apikey">
+                        <button type="button" id="ia-config-ver" class="ia-config-btn" aria-pressed="false">VER</button>
+                    </div>
+                </div>
+
+                <div class="ia-config-campo">
+                    <label for="ia-config-modelo">GEMINI_MODEL (opcional):</label>
+                    <input type="text" id="ia-config-modelo" name="ia-config-modelo"
+                        maxlength="64" spellcheck="false" autocomplete="off"
+                        placeholder="gemini-2.5-flash">
+                </div>
+
+                <label id="ia-config-forzar-caja" class="ia-config-forzar" for="ia-config-forzar" hidden>
+                    <input type="checkbox" id="ia-config-forzar" name="ia-config-forzar">
+                    Grabar aunque Google no confirme la clave (util si el servidor no tiene salida a internet).
+                </label>
+
+                <div class="ia-config-acciones">
+                    <button type="submit" id="ia-config-guardar" class="btn-neon">GRABAR_CREDENCIAL</button>
+                    <a class="ia-config-enlace" href="https://aistudio.google.com/apikey"
+                        target="_blank" rel="noopener noreferrer">OBTENER_CLAVE</a>
+                </div>
+
+            </form>
+
+            <p id="ia-config-status" class="assistant-status" role="status" aria-live="polite" hidden></p>
+        </div>
+
         <div class="assistant-console">
             <div class="assistant-bar">
                 <span class="assistant-dot"></span>

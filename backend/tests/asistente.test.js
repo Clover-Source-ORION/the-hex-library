@@ -12,6 +12,12 @@ process.env.DATA_DIR = DIR_TMP;
 process.env.PORT = '0';
 process.env.NODE_ENV = 'test';
 process.env.IA_RATE_LIMIT_MAX = '1000';
+// El alta de credencial escribe en disco: se redirige a un .env desechable
+// para no tocar nunca el archivo real del proyecto.
+process.env.ENV_FILE_PATH = path.join(DIR_TMP, '.env');
+// dotenv no pisa variables ya definidas, asi que estas credenciales mandan.
+process.env.ADMIN_USER = 'Admin_Pruebas';
+process.env.ADMIN_PASSWORD = 'clave-de-pruebas';
 delete process.env.GEMINI_API_KEY;
 
 const { iniciar } = require('../server');
@@ -256,6 +262,138 @@ async function prueba(nombre, fn) {
     });
     const r = await consultar({ mensaje: 'Consulta demasiado larga de respuesta.' });
     assert.strictEqual(r.status, 502);
+  });
+
+  // Alta de credencial desde la interfaz (POST /api/asistente/configurar)
+  const RUTA_ENV_PRUEBA = path.join(DIR_TMP, '.env');
+  let cookieAdmin = '';
+  let respuestaAlta = null;
+
+  const configurar = (cuerpo, cookie) =>
+    fetch(`${base}/api/asistente/configurar`, {
+      method: 'POST',
+      headers: Object.assign(
+        { 'Content-Type': 'application/json' },
+        cookie ? { Cookie: cookie } : {}
+      ),
+      body: JSON.stringify(cuerpo)
+    });
+
+  await prueba('El alta de credencial exige sesion de administrador', async () => {
+    const r = await configurar({ apiKey: 'AIzaSyClaveDePruebaNoReal12345' });
+    assert.strictEqual(r.status, 401);
+    assert.ok(!fs.existsSync(RUTA_ENV_PRUEBA), 'sin sesion no debe escribirse nada');
+  });
+
+  await prueba('Login de administrador para las pruebas de alta', async () => {
+    const r = await fetch(`${base}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: 'Admin_Pruebas', password: 'clave-de-pruebas' })
+    });
+    assert.strictEqual(r.status, 200);
+    cookieAdmin = (r.headers.get('set-cookie') || '').split(';')[0];
+    assert.ok(cookieAdmin.startsWith('hex_session='));
+  });
+
+  await prueba('Rechaza una clave incompleta con detalle por campo', async () => {
+    const r = await configurar({ apiKey: 'corta' }, cookieAdmin);
+    const b = await r.json();
+    assert.strictEqual(r.status, 400);
+    assert.ok(b.errores && b.errores.apiKey);
+    assert.ok(!fs.existsSync(RUTA_ENV_PRUEBA));
+  });
+
+  await prueba('Rechaza claves con caracteres no permitidos', async () => {
+    const r = await configurar({ apiKey: 'clave con espacios y \n salto 12345' }, cookieAdmin);
+    assert.strictEqual(r.status, 400);
+  });
+
+  await prueba('Si Google rechaza la clave, el .env no se toca', async () => {
+    siguienteRespuesta = () =>
+      Promise.resolve(respuestaError(400, {
+        error: { status: 'INVALID_ARGUMENT', message: 'API key not valid. Please pass a valid API key.' }
+      }));
+    const r = await configurar({ apiKey: 'AIzaSyClaveInvalida0123456789' }, cookieAdmin);
+    const b = await r.json();
+    assert.strictEqual(r.status, 400);
+    assert.ok(b.errores && b.errores.apiKey);
+    assert.ok(!fs.existsSync(RUTA_ENV_PRUEBA), 'una clave rechazada no debe persistirse');
+  });
+
+  await prueba('Guarda la clave verificada en el .env y activa el asistente', async () => {
+    delete process.env.GEMINI_API_KEY;
+    siguienteRespuesta = () => Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ name: 'models/gemini-2.5-flash' })
+    });
+
+    const r = await configurar(
+      { apiKey: 'AIzaSyClaveDePruebaNoReal12345', modelo: 'gemini-2.5-flash' },
+      cookieAdmin
+    );
+    respuestaAlta = await r.json();
+
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(respuestaAlta.data.verificada, true);
+    assert.strictEqual(process.env.GEMINI_API_KEY, 'AIzaSyClaveDePruebaNoReal12345');
+
+    const contenido = fs.readFileSync(RUTA_ENV_PRUEBA, 'utf8');
+    assert.ok(/^GEMINI_API_KEY=AIzaSyClaveDePruebaNoReal12345$/m.test(contenido));
+    assert.ok(/^GEMINI_MODEL=gemini-2\.5-flash$/m.test(contenido));
+  });
+
+  await prueba('La respuesta del alta enmascara la clave', async () => {
+    assert.ok(!JSON.stringify(respuestaAlta).includes('AIzaSyClaveDePruebaNoReal12345'));
+    assert.ok(/\*{4,}/.test(respuestaAlta.data.clave));
+  });
+
+  await prueba('Regrabar la clave no duplica la variable en el archivo', async () => {
+    siguienteRespuesta = () => Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ name: 'models/gemini-2.5-flash' })
+    });
+    const r = await configurar({ apiKey: 'AIzaSyOtraClaveDePrueba9876543' }, cookieAdmin);
+    assert.strictEqual(r.status, 200);
+
+    const lineas = fs.readFileSync(RUTA_ENV_PRUEBA, 'utf8')
+      .split(/\r?\n/)
+      .filter((l) => /^GEMINI_API_KEY=/.test(l));
+
+    assert.strictEqual(lineas.length, 1);
+    assert.ok(lineas[0].includes('AIzaSyOtraClaveDePrueba9876543'));
+  });
+
+  await prueba('Sin red la clave se guarda pero se marca sin verificar', async () => {
+    siguienteRespuesta = () =>
+      Promise.reject(Object.assign(new Error('getaddrinfo ENOTFOUND'), { code: 'ENOTFOUND' }));
+    const r = await configurar({ apiKey: 'AIzaSyClaveSinRedDePrueba12345' }, cookieAdmin);
+    const b = await r.json();
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(b.data.verificada, false);
+    assert.ok(b.data.aviso);
+  });
+
+  await prueba('ALLOW_IA_CONFIG=false bloquea el alta remota', async () => {
+    process.env.ALLOW_IA_CONFIG = 'false';
+    const r = await configurar({ apiKey: 'AIzaSyClaveDePruebaNoReal12345' }, cookieAdmin);
+    assert.strictEqual(r.status, 403);
+    process.env.ALLOW_IA_CONFIG = 'true';
+  });
+
+  await prueba('El estado publico indica si la clave puede darse de alta', async () => {
+    const guardada = process.env.GEMINI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
+
+    const r = await fetch(`${base}/api/asistente/estado`);
+    const b = await r.json();
+    assert.strictEqual(r.status, 503);
+    assert.strictEqual(b.data.configurado, false);
+    assert.strictEqual(b.data.configurable, true);
+
+    process.env.GEMINI_API_KEY = guardada;
   });
 
   // Verificación de estabilidad del resto de endpoints

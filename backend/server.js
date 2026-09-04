@@ -111,9 +111,13 @@ async function iniciar() {
   );
 
   // Aviso temprano: el resto del sitio funciona igual, pero /api/asistente
-  // devolvera 503 hasta que exista GEMINI_API_KEY en backend/.env.
+  // devolvera 503 hasta que exista GEMINI_API_KEY en backend/.env. La clave
+  // puede darse de alta desde la zona BYTE AI del sitio sin tocar el codigo.
   if (!estaConfigurado()) {
-    console.warn('[asistente] GEMINI_API_KEY no definida: el asistente respondera 503.');
+    console.warn(
+      '[asistente] GEMINI_API_KEY no definida: el asistente respondera 503. ' +
+      'Cargala desde la seccion BYTE AI (CARGAR_CREDENCIAL) o en backend/.env.'
+    );
   }
 
   const server = app.listen(PORT, () => {
