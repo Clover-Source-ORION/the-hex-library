@@ -11,7 +11,9 @@
     if (loc.protocol === 'file:' || (esLocal && loc.port !== '3000')) {
       return 'http://localhost:3000/api';
     }
-    return loc.origin + '/api';
+    
+    // Si estamos en producción (GitHub Pages o cualquier otro hosting), apunta directamente a Render
+    return 'https://the-hex-library-backend.onrender.com/api';
   })();
 
   // Constantes de configuración, almacenamiento y validación
