@@ -3,7 +3,10 @@
 // Carga de variables de entorno desde backend/.env ANTES de cualquier otro
 // require: varios modulos leen process.env al importarse. El archivo .env no se
 // versiona (esta en .gitignore); usa .env.example como plantilla.
-require('dotenv').config();
+// Se indica la ruta absoluta porque dotenv busca por defecto en el directorio
+// desde el que se lanza node, y asi funciona igual con `node backend/server.js`
+// que con `cd backend && npm start`.
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 // Importación de módulos nativos y dependencias
 const path = require('path');
@@ -67,7 +70,10 @@ const origenesPermitidos = (process.env.ALLOWED_ORIGINS || '')
 app.use(
   cors({
     origin: origenesPermitidos.length > 0 ? origenesPermitidos : true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    // Authorization es imprescindible: es como viaja la sesion cuando el
+    // frontend esta en otro dominio y el navegador descarta la cookie.
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
     maxAge: 600
   })

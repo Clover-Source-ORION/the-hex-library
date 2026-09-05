@@ -201,6 +201,8 @@ async function prueba(nombre, fn) {
 
   /** Guarda la cookie de sesion entre peticiones (no hay navegador aqui). */
   let cookieAdmin = '';
+  /** Mismo token, para probar el transporte por cabecera Authorization. */
+  let tokenAdmin = '';
 
   const comoAdmin = (ruta, opciones = {}) =>
     fetch(`${base}${ruta}`, {
@@ -240,12 +242,36 @@ async function prueba(nombre, fn) {
     const setCookie = r.headers.get('set-cookie');
     assert.ok(setCookie, 'no se emitio cookie');
     assert.ok(/HttpOnly/i.test(setCookie), 'la cookie no es httpOnly');
-    assert.ok(/SameSite=Strict/i.test(setCookie), 'la cookie no es SameSite=Strict');
+    // Fuera de produccion la cookie es Lax (Secure exige HTTPS). Con
+    // NODE_ENV=production o CROSS_SITE_COOKIES=true pasa a None + Secure,
+    // que es lo que exige el navegador para GitHub Pages -> Render.
+    assert.ok(/SameSite=Lax/i.test(setCookie), 'la cookie no es SameSite=Lax en desarrollo');
+    assert.ok(!/Secure/i.test(setCookie), 'Secure sobre http impediria guardar la cookie');
+
+    // El mismo token viaja en el cuerpo para el transporte por cabecera.
+    assert.ok(b.data.token, 'el login no devolvio token');
+    tokenAdmin = b.data.token;
 
     cookieAdmin = setCookie.split(';')[0];
+    assert.strictEqual(cookieAdmin.split('=').slice(1).join('='), tokenAdmin,
+      'el token del cuerpo y el de la cookie deben coincidir');
   });
 
-  await prueba('Un token manipulado no supera la firma HMAC', async () => {
+  await prueba('La sesion tambien viaja en Authorization: Bearer', async () => {
+    const r = await fetch(`${base}/api/comentarios`, {
+      headers: { Authorization: `Bearer ${tokenAdmin}` }
+    });
+    assert.strictEqual(r.status, 200, 'la cabecera Bearer no autentico');
+  });
+
+  await prueba('Un Bearer manipulado no supera la firma HMAC', async () => {
+    const r = await fetch(`${base}/api/comentarios`, {
+      headers: { Authorization: `Bearer ${tokenAdmin.slice(0, -4)}AAAA` }
+    });
+    assert.strictEqual(r.status, 401);
+  });
+
+  await prueba('Un token de cookie manipulado no supera la firma HMAC', async () => {
     const [nombre, valor] = cookieAdmin.split('=');
     const falso = `${nombre}=${valor.slice(0, -4)}AAAA`;
     const r = await fetch(`${base}/api/comentarios`, { headers: { Cookie: falso } });

@@ -14,8 +14,11 @@ const NOMBRE_COOKIE = 'hex_session';
 // Clave secreta para firmar tokens
 const SECRETO = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
-if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
-  console.warn('[auth] SESSION_SECRET no definido. Las sesiones se invalidaran al reiniciar.');
+if (!process.env.SESSION_SECRET) {
+  console.warn(
+    '[auth] SESSION_SECRET no definido: se usa uno aleatorio y las sesiones se ' +
+    'invalidaran en cada reinicio del proceso. Definelo en el entorno del despliegue.'
+  );
 }
 
 // Derivación segura de la contraseña mediante scrypt
@@ -96,25 +99,60 @@ function leerCookies(req) {
   return salida;
 }
 
+// Atributos de la cookie de sesion.
+//
+// SameSite=Strict impide que el navegador GUARDE la cookie cuando la respuesta
+// viene de otro dominio, que es justo el caso GitHub Pages -> Render. Para ese
+// escenario hace falta 'SameSite=None; Secure', y Secure exige HTTPS: en local
+// (http://localhost) romperia el login, asi que alli se usa Lax.
+//
+// Se activa con CROSS_SITE_COOKIES=true, o automaticamente con
+// NODE_ENV=production. Poner CROSS_SITE_COOKIES=false lo desactiva siempre.
+const COOKIES_CROSS_SITE =
+  process.env.CROSS_SITE_COOKIES === 'true' ||
+  (process.env.CROSS_SITE_COOKIES !== 'false' && process.env.NODE_ENV === 'production');
+
+function atributosCookie() {
+  const partes = ['HttpOnly', 'Path=/'];
+  if (COOKIES_CROSS_SITE) partes.push('SameSite=None', 'Secure');
+  else partes.push('SameSite=Lax');
+  return partes.join('; ');
+}
+
 // Configura la cookie de sesión en la respuesta con flag HttpOnly y SameSite
 function ponerCookieSesion(res, token) {
-  const seguro = process.env.NODE_ENV === 'production' ? '; Secure' : '';
   res.append(
     'Set-Cookie',
-    NOMBRE_COOKIE + '=' + token +
-    '; HttpOnly; SameSite=Strict; Path=/; Max-Age=' + Math.floor(DURACION_MS / 1000) + seguro
+    NOMBRE_COOKIE + '=' + token + '; ' + atributosCookie() +
+    '; Max-Age=' + Math.floor(DURACION_MS / 1000)
   );
 }
 
 // Elimina la cookie de sesión expirándola de inmediato
 function borrarCookieSesion(res) {
-  const seguro = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  res.append('Set-Cookie', NOMBRE_COOKIE + '=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' + seguro);
+  res.append('Set-Cookie', NOMBRE_COOKIE + '=; ' + atributosCookie() + '; Max-Age=0');
+}
+
+// Extrae el token de la peticion. Se admiten dos transportes:
+//  1. Cabecera 'Authorization: Bearer <token>'. Es el unico que funciona cuando
+//     el frontend y la API estan en dominios distintos (GitHub Pages -> Render),
+//     porque los navegadores modernos bloquean las cookies de terceros.
+//  2. Cookie HttpOnly 'hex_session'. Se usa cuando el backend sirve la pagina
+//     (localhost o el propio dominio de Render): mas seguro, el JS no la lee.
+function tokenDe(req) {
+  const cabecera = req.headers ? req.headers.authorization : '';
+
+  if (typeof cabecera === 'string') {
+    const coincidencia = /^Bearer\s+(.+)$/i.exec(cabecera.trim());
+    if (coincidencia) return coincidencia[1].trim();
+  }
+
+  return leerCookies(req)[NOMBRE_COOKIE];
 }
 
 // Extrae y valida la sesión desde la petición actual
 function sesionDe(req) {
-  return verificarToken(leerCookies(req)[NOMBRE_COOKIE]);
+  return verificarToken(tokenDe(req));
 }
 
 // Exportación del módulo
@@ -126,6 +164,7 @@ module.exports = {
   crearToken,
   verificarToken,
   leerCookies,
+  tokenDe,
   ponerCookieSesion,
   borrarCookieSesion,
   sesionDe

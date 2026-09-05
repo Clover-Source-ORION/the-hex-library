@@ -20,12 +20,17 @@ function login(req, res, next) {
     }
 
     // Genera el token y configura la cookie HTTP de la sesión
-    auth.ponerCookieSesion(res, auth.crearToken(usuario));
+    const token = auth.crearToken(usuario);
+    auth.ponerCookieSesion(res, token);
 
     return res.status(200).json({
       ok: true,
       mensaje: 'Sesion iniciada.',
-      data: { usuario, expiraEn: auth.DURACION_MS }
+      // El token se devuelve ademas en el cuerpo para que el frontend pueda
+      // enviarlo como 'Authorization: Bearer' cuando la cookie no llega
+      // (GitHub Pages y la API en dominios distintos). Es el mismo valor
+      // firmado que la cookie, con la misma caducidad.
+      data: { usuario, expiraEn: auth.DURACION_MS, token }
     });
   } catch (error) {
     return next(error);

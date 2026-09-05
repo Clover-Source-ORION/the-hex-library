@@ -7,7 +7,6 @@
   console.info('[admin] ' + VERSION + ' cargado.');
 
   // Configuración de tiempo de espera y detección automática de la URL base de la API
-  var TIMEOUT_MS = 10000;
 
   // Misma logica que main.js (ver comentarios alli). Normalmente este bloque no
   // se ejecuta porque HexApp.API_BASE ya esta disponible; queda como respaldo.
@@ -32,6 +31,52 @@
     return API_REMOTA;
   })();
 
+  // ¿API en otro origen? Entonces la cookie de sesion es de terceros y el
+  // navegador la descarta: la sesion viaja en la cabecera Authorization.
+  var API_CROSS_ORIGIN = (function () {
+    if (window.HexApp && typeof window.HexApp.API_CROSS_ORIGIN === 'boolean') {
+      return window.HexApp.API_CROSS_ORIGIN;
+    }
+    if (API_BASE.charAt(0) === '/') return false;
+    try {
+      return new URL(API_BASE, window.location.href).origin !== window.location.origin;
+    } catch (error) {
+      return true;
+    }
+  })();
+
+  // Render duerme las instancias gratuitas: la primera peticion puede tardar
+  // hasta medio minuto en despertar el servicio.
+  var TIMEOUT_MS = API_CROSS_ORIGIN ? 30000 : 10000;
+
+  // Almacen del token. Se delega en main.js si esta cargado para que ambos
+  // scripts compartan exactamente la misma sesion.
+  var CLAVE_SESION = 'hexlib:sesion';
+
+  function sesionCompartida() {
+    return window.HexApp && window.HexApp.sesion ? window.HexApp.sesion : null;
+  }
+
+  function leerToken() {
+    var compartida = sesionCompartida();
+    if (compartida) return compartida.leer();
+    if (!API_CROSS_ORIGIN) return '';
+    try { return window.sessionStorage.getItem(CLAVE_SESION) || ''; } catch (error) { return ''; }
+  }
+
+  function guardarToken(token) {
+    var compartida = sesionCompartida();
+    if (compartida) return compartida.guardar(token);
+    if (!API_CROSS_ORIGIN || !token) return;
+    try { window.sessionStorage.setItem(CLAVE_SESION, token); } catch (error) { /* modo privado */ }
+  }
+
+  function borrarToken() {
+    var compartida = sesionCompartida();
+    if (compartida) return compartida.borrar();
+    try { window.sessionStorage.removeItem(CLAVE_SESION); } catch (error) { /* modo privado */ }
+  }
+
   // Cliente HTTP propio con soporte para timeout y manejo centralizado de errores
   function peticionPropia(ruta, opciones) {
     var controlador = new AbortController();
@@ -40,6 +85,12 @@
     var config = Object.assign({ headers: {}, signal: controlador.signal }, opciones || {});
     config.headers = Object.assign({ Accept: 'application/json' }, config.headers);
     config.credentials = 'include';
+
+    // Sesion por cabecera cuando la cookie no puede viajar (cross-origin).
+    var token = leerToken();
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = 'Bearer ' + token;
+    }
 
     return fetch(API_BASE + ruta, config)
       .then(function (respuesta) {
@@ -145,6 +196,8 @@
         var datos = respuesta.data || {};
         estado.autenticado = Boolean(datos.autenticado);
         estado.usuario = datos.usuario || null;
+        // Token caducado o invalidado en el servidor: se descarta.
+        if (!estado.autenticado) borrarToken();
         return estado.autenticado;
       })
       .catch(function () {
@@ -188,6 +241,7 @@
       body: JSON.stringify({ usuario: usuario, password: password })
     })
       .then(function (respuesta) {
+        guardarToken(respuesta.data && respuesta.data.token);
         estado.autenticado = true;
         estado.usuario = respuesta.data.usuario;
         el.loginForm.reset();
@@ -208,6 +262,7 @@
     peticion('/admin/logout', { method: 'POST' })
       .catch(function () { })
       .finally(function () {
+        borrarToken();
         estado.autenticado = false;
         estado.usuario = null;
         cerrarPanel();
@@ -340,6 +395,7 @@
   }
 
   function manejarExpiracion() {
+    borrarToken();
     estado.autenticado = false;
     cerrarPanel();
     abrirLogin();

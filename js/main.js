@@ -33,10 +33,43 @@
     return API_REMOTA;
   })();
 
+  // ¿La API vive en otro origen? Si es asi (GitHub Pages -> Render) el navegador
+  // descarta la cookie de sesion por ser de terceros, y hay que llevar el token
+  // en la cabecera Authorization.
+  var API_CROSS_ORIGIN = (function () {
+    if (API_BASE.charAt(0) === '/') return false;
+    try {
+      return new URL(API_BASE, window.location.href).origin !== window.location.origin;
+    } catch (error) {
+      return true;
+    }
+  })();
+
+  // Almacen del token de sesion. Solo se usa en modo cross-origin: cuando el
+  // backend sirve la pagina, la cookie HttpOnly sigue siendo el transporte y el
+  // token nunca toca el JS. sessionStorage se vacia al cerrar la pestana.
+  var CLAVE_SESION = 'hexlib:sesion';
+
+  function leerToken() {
+    if (!API_CROSS_ORIGIN) return '';
+    try { return window.sessionStorage.getItem(CLAVE_SESION) || ''; } catch (error) { return ''; }
+  }
+
+  function guardarToken(token) {
+    if (!API_CROSS_ORIGIN || !token) return;
+    try { window.sessionStorage.setItem(CLAVE_SESION, token); } catch (error) { /* modo privado */ }
+  }
+
+  function borrarToken() {
+    try { window.sessionStorage.removeItem(CLAVE_SESION); } catch (error) { /* modo privado */ }
+  }
+
   // Constantes de configuración, almacenamiento y validación
   var CLAVE_BORRADOR = 'hexlib:borrador-contacto';
   var CLAVE_CONTENIDO = 'hexlib:contenido-cache';
-  var TIMEOUT_MS = 10000;
+  // Render duerme las instancias gratuitas: la primera peticion puede tardar
+  // hasta medio minuto en despertar el servicio.
+  var TIMEOUT_MS = API_CROSS_ORIGIN ? 30000 : 10000;
   // El modelo de IA tarda mas que el resto de endpoints: espera ampliada.
   var TIMEOUT_IA_MS = 45000;
 
@@ -60,6 +93,12 @@
 
     config.headers = Object.assign({ Accept: 'application/json' }, config.headers);
     config.credentials = 'include';
+
+    // Sesion por cabecera cuando la cookie no puede viajar (cross-origin).
+    var token = leerToken();
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = 'Bearer ' + token;
+    }
 
     return fetch(API_BASE + ruta, config)
       .then(function (respuesta) {
@@ -559,7 +598,10 @@
   function haySesionAdmin() {
     return peticion('/admin/session', { method: 'GET' })
       .then(function (respuesta) {
-        return !!(respuesta.data && respuesta.data.autenticado);
+        var activa = !!(respuesta.data && respuesta.data.autenticado);
+        // Token caducado o invalidado en el servidor: no tiene sentido guardarlo.
+        if (!activa) borrarToken();
+        return activa;
       })
       .catch(function () { return false; });
   }
@@ -658,7 +700,10 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ usuario: usuario, password: password })
-          }).then(function () { return true; });
+          }).then(function (respuesta) {
+            guardarToken(respuesta.data && respuesta.data.token);
+            return true;
+          });
         })
         .then(function () {
           estadoConfig('Verificando la clave contra la API de Gemini...', 'info');
@@ -839,11 +884,18 @@
   // Exposición de funciones principales para compartir contexto con otros scripts
   window.HexApp = {
     API_BASE: API_BASE,
+    API_CROSS_ORIGIN: API_CROSS_ORIGIN,
     peticion: peticion,
     aplicarContenido: aplicarContenido,
     cargarContenido: cargarContenido,
     originales: function () { return Object.assign({}, textosOriginales); },
-    CLAVE_CONTENIDO: CLAVE_CONTENIDO
+    CLAVE_CONTENIDO: CLAVE_CONTENIDO,
+    // Sesion compartida con admin.js: ambos scripts deben ver el mismo token.
+    sesion: {
+      leer: leerToken,
+      guardar: guardarToken,
+      borrar: borrarToken
+    }
   };
 
   // Punto de entrada para inicializar la interfaz una vez cargado el DOM
