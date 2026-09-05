@@ -171,6 +171,7 @@ the-hex-library/
 │   │   ├── switch-02-archivos-de-guardado.html
 │   └── └── switch-03-parches-de-codigo.html
 ├── index.html
+├── package.json
 └── README.md
 ```
 
