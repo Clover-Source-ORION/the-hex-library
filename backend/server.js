@@ -7,6 +7,7 @@ require('dotenv').config();
 
 // Importación de módulos nativos y dependencias
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 
@@ -32,7 +33,23 @@ const {
 // Configuración de puerto y directorio estático del frontend
 const PORT_ENV = Number(process.env.PORT);
 const PORT = Number.isInteger(PORT_ENV) && PORT_ENV >= 0 ? PORT_ENV : 3000;
-const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
+
+// El frontend (index.html, css/, js/, lecturas/) vive en la raiz del repo, un
+// nivel por encima de backend/. Se puede sobrescribir con FRONTEND_DIR si algun
+// dia se mueve, sin tocar el codigo.
+const FRONTEND_DIR = process.env.FRONTEND_DIR
+  ? path.resolve(process.env.FRONTEND_DIR)
+  : path.join(__dirname, '..');
+
+// Como la raiz del repo tambien contiene el backend y metadatos del proyecto,
+// se bloquea su acceso publico antes de montar los archivos estaticos.
+const RUTAS_PRIVADAS = [
+  /^\/backend(\/|$)/i,
+  /^\/node_modules(\/|$)/i,
+  /^\/\.git(\/|$)/i,
+  /^\/package(-lock)?\.json$/i,
+  /(^|\/)\.[^/]/ // cualquier archivo o carpeta oculta (.env, .DS_Store, ...)
+];
 
 // Confianza en el proxy inverso para leer la IP real del usuario
 app.set('trust proxy', 1);
@@ -83,10 +100,21 @@ app.use('/api', notFound);
 
 // --- Archivos estáticos del Frontend ---
 
+// Impide que el codigo del servidor, .env o la carpeta .git se sirvan como
+// archivos estaticos por compartir carpeta con el frontend.
+app.use((req, res, next) => {
+  const ruta = decodeURIComponent(req.path);
+  if (RUTAS_PRIVADAS.some((patron) => patron.test(ruta))) {
+    return res.status(404).type('text/plain').send('404');
+  }
+  return next();
+});
+
 // Configuración de archivos estáticos con revalidación de caché (maxAge: 0)
 app.use(
   express.static(FRONTEND_DIR, {
     extensions: ['html'],
+    dotfiles: 'ignore',
     etag: true,
     lastModified: true,
     maxAge: 0
@@ -94,9 +122,11 @@ app.use(
 );
 
 // Captura de cualquier otra ruta para servir el index.html principal
-app.get('*', (req, res) => {
+app.get('*', (req, res, next) => {
   res.set('Cache-Control', 'no-cache');
-  res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'index.html'), (error) => {
+    if (error) next(error);
+  });
 });
 
 // Middleware global para manejo unificado de errores
@@ -121,8 +151,18 @@ async function iniciar() {
     );
   }
 
+  // Aviso claro si el frontend no esta donde el servidor lo busca: sin esto el
+  // sitio responde 404 en / sin explicar por que.
+  if (!fs.existsSync(path.join(FRONTEND_DIR, 'index.html'))) {
+    console.warn(
+      `[server] No se encontro index.html en ${FRONTEND_DIR}. ` +
+      'Define FRONTEND_DIR en backend/.env si el frontend esta en otra carpeta.'
+    );
+  }
+
   const server = app.listen(PORT, () => {
     console.log(`[server] The Hex Library en http://localhost:${PORT}`);
+    console.log(`[server] Frontend servido desde ${FRONTEND_DIR}`);
   });
 
   // Apagado controlado del servidor ante señales del sistema

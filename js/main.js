@@ -2,18 +2,35 @@
   'use strict';
 
   // Determinación de la URL base para las peticiones a la API según el entorno
+  // URL del backend desplegado. Solo se usa cuando la pagina NO la sirve el
+  // propio backend (por ejemplo, GitHub Pages).
+  var API_REMOTA = 'https://the-hex-library-backend.onrender.com/api';
+
+  // Puerto local del backend. Debe coincidir con PORT de backend/.env.
+  var PUERTO_LOCAL = '3000';
+
   var API_BASE = (function () {
+    // 1. Override manual: window.HEX_API_BASE = '...' antes de cargar main.js
     if (window.HEX_API_BASE) return window.HEX_API_BASE;
 
     var loc = window.location;
     var esLocal = loc.hostname === 'localhost' || loc.hostname === '127.0.0.1' || loc.hostname === '';
 
-    if (loc.protocol === 'file:' || (esLocal && loc.port !== '3000')) {
-      return 'http://localhost:3000/api';
+    // 2. Abierto como archivo (file://): no hay origen, se va al backend local.
+    if (loc.protocol === 'file:') return 'http://localhost:' + PUERTO_LOCAL + '/api';
+
+    // 3. En local. Si la pagina la sirve el propio backend (mismo puerto), se
+    //    usa ruta relativa: mismo origen, sin CORS y sin cookies de terceros.
+    //    Si es otro puerto (Live Server, 5500...), se apunta al backend local.
+    if (esLocal) {
+      return loc.port === PUERTO_LOCAL ? '/api' : 'http://localhost:' + PUERTO_LOCAL + '/api';
     }
-    
-    // Si estamos en producción (GitHub Pages o cualquier otro hosting), apunta directamente a Render
-    return 'https://the-hex-library-backend.onrender.com/api';
+
+    // 4. El backend de Render tambien sirve el frontend: mismo origen.
+    if (/\.onrender\.com$/i.test(loc.hostname)) return '/api';
+
+    // 5. Resto de hostings estaticos (GitHub Pages, etc.): backend remoto.
+    return API_REMOTA;
   })();
 
   // Constantes de configuración, almacenamiento y validación

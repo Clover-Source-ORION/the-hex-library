@@ -9,6 +9,11 @@
   // Configuración de tiempo de espera y detección automática de la URL base de la API
   var TIMEOUT_MS = 10000;
 
+  // Misma logica que main.js (ver comentarios alli). Normalmente este bloque no
+  // se ejecuta porque HexApp.API_BASE ya esta disponible; queda como respaldo.
+  var API_REMOTA = 'https://the-hex-library-backend.onrender.com/api';
+  var PUERTO_LOCAL = '3000';
+
   var API_BASE = (function () {
     if (window.HexApp && window.HexApp.API_BASE) return window.HexApp.API_BASE;
     if (window.HEX_API_BASE) return window.HEX_API_BASE;
@@ -16,10 +21,15 @@
     var loc = window.location;
     var esLocal = loc.hostname === 'localhost' || loc.hostname === '127.0.0.1' || loc.hostname === '';
 
-    if (loc.protocol === 'file:' || (esLocal && loc.port !== '3000')) {
-      return 'http://localhost:3000/api';
+    if (loc.protocol === 'file:') return 'http://localhost:' + PUERTO_LOCAL + '/api';
+
+    if (esLocal) {
+      return loc.port === PUERTO_LOCAL ? '/api' : 'http://localhost:' + PUERTO_LOCAL + '/api';
     }
-    return loc.origin + '/api';
+
+    if (/\.onrender\.com$/i.test(loc.hostname)) return '/api';
+
+    return API_REMOTA;
   })();
 
   // Cliente HTTP propio con soporte para timeout y manejo centralizado de errores
