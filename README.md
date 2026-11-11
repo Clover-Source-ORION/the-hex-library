@@ -164,12 +164,18 @@ the-hex-library/
 │   │   ├── gba-01-mapa-de-memoria.html
 │   │   ├── gba-02-paletas-y-graficos.html
 │   │   ├── gba-03-cabecera-de-cartucho.html
+│   │   ├── gba-04-tablas-de-punteros.html
+│   │   ├── gba-05-compresion-lz77.html
 │   │   ├── nds-01-cabecera-y-sistema-de-archivos.html
 │   │   ├── nds-02-contenedores-narc-y-compresion.html
 │   │   ├── nds-03-graficos-nitro.html
+│   │   ├── nds-04-hexadecimal-y-endianness.html
+│   │   ├── nds-05-reempaquetar-y-probar.html
 │   │   ├── switch-01-layeredfs.html
 │   │   ├── switch-02-archivos-de-guardado.html
-│   └── └── switch-03-parches-de-codigo.html
+│   │   ├── switch-03-parches-de-codigo.html
+│   │   ├── switch-04-ejecutables-nso-y-build-id.html
+│   └── └── switch-05-buenas-practicas.html
 ├── index.html
 ├── package.json
 └── README.md

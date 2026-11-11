@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reempaquetar y probar | The Hex Library</title>
+    <meta name="description" content="Guía de trabajo para respaldar, extraer, modificar, reempaquetar y validar una ROM propia de Nintendo DS con ndstool.">
+
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+
+    <!-- Fuentes externas: Fira Code y VT323 provistas por Google Fonts bajo licencia SIL Open Font License (OFL) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <!-- Atributos data-editable: vinculan los nodos de texto directamente con el módulo de edición frontend en admin.js -->
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>NDS/0x05_REEMPAQUETADO</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>NTR-001 &middot; ndstool</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.1 &nbsp;//&nbsp; lectura ~12 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag nds">NDS</span>
+            <h1>Reempaquetar y probar</h1>
+            <p class="reader-lead">Editar una ROM de DS se parece a reformar una casa: primero documentas y extraes sus componentes, haces cambios controlados y vuelves a montar el conjunto. Un reempaquetador actualiza estructuras del contenedor, pero cada modificación debe verificarse y probarse por separado.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#extraer">Extraer, editar, reconstruir</a></li>
+                        <li><a href="#porque">Por qué no basta con el hex</a></li>
+                        <li><a href="#prueba">Prueba como un profesional</a></li>
+                        <li><a href="#preparacion">Preparar un espacio de trabajo</a></li>
+                        <li><a href="#inventario">Inventario de archivos NDS</a></li>
+                        <li><a href="#extraccion">Extraer y verificar componentes</a></li>
+                        <li><a href="#cambios">Hacer cambios pequeños y reversibles</a></li>
+                        <li><a href="#reconstruccion">Reconstruir la ROM</a></li>
+                        <li><a href="#comparacion">Comparar antes y después</a></li>
+                        <li><a href="#emulador">Pruebas en emulador</a></li>
+                        <li><a href="#diagnostico">Diagnosticar fallos</a></li>
+                        <li><a href="#registro">Registro de trabajo</a></li>
+                        <li><a href="#practica">Lista de comprobación final</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="extraer">1. Extraer, editar, reconstruir</h2>
+            <p>Un flujo repetible separa el volcado original, los archivos extraídos y el resultado reconstruido. El siguiente ejemplo muestra la forma general de uso de <code>ndstool</code>; consulta la versión instalada de la herramienta y su ayuda, porque algunas compilaciones pueden variar en opciones o rutas.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>flujo.sh</span><span>SHELL</span></div>
+                <pre><code><span class="cmt"># 1. extraer</span>
+ndstool -x juego.nds -9 arm9.bin -7 arm7.bin -d datos -y overlay -h header.bin
+<span class="cmt"># 2. edita los archivos de datos/</span>
+<span class="cmt"># 3. reconstruir</span>
+ndstool -c nuevo.nds -9 arm9.bin -7 arm7.bin -d datos -y overlay -h header.bin</code></pre>
+            </div>
+
+            <p>Ejecuta estos comandos desde una carpeta de trabajo dedicada y conserva el original en otro lugar. No sobrescribas la ROM de entrada al crear la salida: mantener ambas versiones permite repetir la extracción y comparar resultados.</p>
+
+            <h2 id="porque">2. Por qué no basta con el hex</h2>
+
+            <p>Una ROM de DS no es solo una concatenación de archivos. Incluye una cabecera con offsets y tamaños, una tabla de asignación de archivos (FAT), una tabla de nombres y directorios (FNT), ejecutables, overlays y, con frecuencia, alineación entre regiones. Si un archivo crece, los offsets posteriores pueden cambiar.</p>
+            <p>Al <strong>reempaquetar</strong>, una herramienta compatible vuelve a organizar los componentes y actualiza estructuras del contenedor que dependen de sus posiciones. Esto reduce errores manuales, pero no garantiza que un recurso modificado siga teniendo el formato esperado por el juego.</p>
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Estructuras que pueden verse afectadas al reconstruir</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Componente</th>
+                            <th scope="col">Función</th>
+                            <th scope="col">Qué comprobar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Cabecera</td>
+                            <td>Describe regiones y parámetros de la ROM.</td>
+                            <td>Que las direcciones, tamaños y puntos de entrada sigan siendo coherentes.</td>
+                        </tr>
+                        <tr>
+                            <td>FAT</td>
+                            <td>Asocia archivos con rangos de bytes del contenedor.</td>
+                            <td>Que cada archivo tenga un rango válido y no solapado indebidamente.</td>
+                        </tr>
+                        <tr>
+                            <td>FNT</td>
+                            <td>Organiza nombres y directorios de NitroFS.</td>
+                            <td>Que los nombres y rutas esperados sigan disponibles.</td>
+                        </tr>
+                        <tr>
+                            <td>Overlays</td>
+                            <td>Permiten cargar regiones de código bajo demanda.</td>
+                            <td>Que los archivos y metadatos de overlay correspondan entre sí.</td>
+                        </tr>
+                        <tr>
+                            <td>Padding y alineación</td>
+                            <td>Separan regiones en límites requeridos por el formato o el cargador.</td>
+                            <td>Que los offsets respeten las convenciones del proyecto.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="prueba">3. Prueba como un profesional</h2>
+
+            <ul>
+                <li>Trabaja siempre sobre una <strong>copia</strong> legal que hayas obtenido y puedas usar.</li>
+                <li>Cambia una sola cosa por prueba y conserva una copia del estado anterior.</li>
+                <li>Valida primero la estructura del archivo reconstruido.</li>
+                <li>Arranca en un emulador actualizado antes de probar en hardware propio compatible.</li>
+                <li>Comprueba no solo el menú inicial, sino también la pantalla o función afectada.</li>
+            </ul>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">Ojo</span>
+                <p>Usa solo copias de juegos que poseas. Esta guía no cubre ni apoya la descarga de ROMs.</p>
+            </div>
+
+            <h2 id="preparacion">4. Preparar un espacio de trabajo</h2>
+            <p>Antes de ejecutar una herramienta, organiza las entradas y salidas para que no se mezclen. Una estructura de directorios sencilla ayuda a identificar qué archivo es original, cuál se extrajo y qué versión contiene las modificaciones.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>proyecto_nds/</span><span>ESTRUCTURA</span></div>
+                <pre><code>proyecto_nds/
+├── original/
+│   └── juego.nds
+├── extraido/
+│   ├── arm9.bin
+│   ├── arm7.bin
+│   ├── header.bin
+│   ├── overlay/
+│   └── datos/
+├── salida/
+│   └── juego_modificado.nds
+└── notas/
+    └── cambios.txt</code></pre>
+            </div>
+
+            <p>Usa nombres claros y evita reutilizar el mismo directorio de extracción para juegos distintos. Si vas a comparar dos revisiones de una ROM, mantenlas en carpetas separadas: las diferencias de región, idioma o revisión pueden cambiar tamaños, offsets y contenido.</p>
+
+            <ol>
+                <li><strong>Protege la entrada:</strong> marca el archivo original como solo lectura o guárdalo en una carpeta de respaldo.</li>
+                <li><strong>Registra identidad:</strong> anota nombre, tamaño, región y hash si tu flujo utiliza una herramienta para calcularlo.</li>
+                <li><strong>Verifica la herramienta:</strong> confirma su versión y que la ayuda corresponda a la sintaxis mostrada.</li>
+                <li><strong>Planifica la salida:</strong> elige una ruta diferente para la ROM reempaquetada.</li>
+                <li><strong>Documenta dependencias:</strong> registra editores, conversores y scripts usados.</li>
+            </ol>
+
+            <h2 id="inventario">5. Inventario de archivos NDS</h2>
+            <p>Después de extraer una ROM, no todos los archivos tienen el mismo papel. Algunos son ejecutables, otros contienen datos de juego, y otros describen cómo localizar recursos. Un inventario preliminar facilita elegir la herramienta adecuada y evitar editar un archivo que solo es un contenedor o una tabla auxiliar.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Componentes habituales de una extracción</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Elemento</th>
+                            <th scope="col">Contenido típico</th>
+                            <th scope="col">Precaución</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>arm9.bin</code></td>
+                            <td>Ejecutable principal ARM9.</td>
+                            <td>Las direcciones de ejecución no equivalen directamente a offsets de la ROM.</td>
+                        </tr>
+                        <tr>
+                            <td><code>arm7.bin</code></td>
+                            <td>Ejecutable ARM7 y funciones auxiliares.</td>
+                            <td>Puede comunicarse con el ARM9 mediante estructuras compartidas.</td>
+                        </tr>
+                        <tr>
+                            <td>Overlay</td>
+                            <td>Código o datos cargados de forma dinámica.</td>
+                            <td>El archivo puede depender de una tabla de metadatos.</td>
+                        </tr>
+                        <tr>
+                            <td>NitroFS</td>
+                            <td>Archivos y directorios usados por el juego.</td>
+                            <td>Los nombres y rutas pueden ser relevantes para el cargador.</td>
+                        </tr>
+                        <tr>
+                            <td><code>header.bin</code></td>
+                            <td>Campos de cabecera exportados por la herramienta.</td>
+                            <td>No reemplaces campos del formato con bytes arbitrarios.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Extensiones como <code>.bin</code> no describen por sí solas el formato del contenido. Identifica el archivo por su origen, cabeceras internas y referencias. Para recursos conocidos, usa herramientas compatibles con el formato y conserva una copia de los bytes extraídos antes de convertirlos.</p>
+
+            <h2 id="extraccion">6. Extraer y verificar componentes</h2>
+            <p>Tras la extracción, verifica que los componentes principales existan y que sus tamaños sean coherentes con la cabecera y con el inventario generado por la herramienta. Una extracción que termina sin error no demuestra que todos los datos sean interpretables como el formato esperado.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>verificar_archivos.txt</span><span>LISTA</span></div>
+                <pre><code>[ ] La herramienta terminó con código de salida exitoso.
+[ ] Los binarios ARM9 y ARM7 están presentes cuando corresponde.
+[ ] Las carpetas de overlays y NitroFS se generaron.
+[ ] El tamaño de cada archivo parece razonable.
+[ ] Los nombres extraídos coinciden con la estructura esperada.
+[ ] Se conserva una copia sin modificar de la extracción.</code></pre>
+            </div>
+
+            <p>Si la herramienta informa un campo desconocido o una región que no puede extraer, conserva el mensaje completo. No rellenes los archivos ausentes con ceros ni reconstruyas la cabecera desde otra ROM: eso puede producir un contenedor aparentemente válido pero que no corresponda al original.</p>
+
+            <h2 id="cambios">7. Hacer cambios pequeños y reversibles</h2>
+            <p>Un cambio aislado es más fácil de localizar si algo sale mal. Antes de editar, define el resultado esperado, conserva el recurso original y usa un formato de salida que la herramienta de reconstrucción pueda consumir.</p>
+
+            <ol>
+                <li><strong>Selecciona un recurso:</strong> confirma su ruta y su relación con el juego.</li>
+                <li><strong>Guarda el original extraído:</strong> crea una copia con nombre que permita reconocerla.</li>
+                <li><strong>Registra el formato:</strong> anota dimensiones, compresión, paleta, longitud o terminadores relevantes.</li>
+                <li><strong>Modifica una variable:</strong> evita cambiar gráficos, scripts y ejecutables en la misma prueba.</li>
+                <li><strong>Valida fuera de la ROM:</strong> abre o analiza el recurso modificado antes de reconstruir.</li>
+                <li><strong>Comprueba el tamaño:</strong> si creció, considera si el motor y sus referencias permiten el nuevo tamaño.</li>
+            </ol>
+
+            <p>Reemplazar un archivo de NitroFS puede ser sencillo si el juego lo localiza por nombre y admite su longitud. No todos los recursos se cargan así: puede haber tamaños almacenados en otro archivo, punteros codificados en ejecutables o límites fijos en memoria.</p>
+
+            <div class="reader-callout info">
+                <span class="reader-callout-title">El reempaquetador no modifica el formato del recurso</span>
+                <p>Una herramienta de contenedor puede colocar un archivo nuevo en NitroFS y actualizar la FAT, pero no convierte automáticamente la imagen, recompone una estructura propietaria ni actualiza referencias internas al tamaño del recurso.</p>
+            </div>
+
+            <h2 id="reconstruccion">8. Reconstruir la ROM</h2>
+            <p>Usa los componentes extraídos y modificados de la misma ROM de origen. La forma general del comando es la siguiente; ajusta nombres, rutas y opciones a la documentación de la versión instalada.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>reconstruir.sh</span><span>SHELL</span></div>
+                <pre><code><span class="cmt"># Escribe en un archivo nuevo; no reemplaza juego.nds.</span>
+ndstool -c salida/juego_modificado.nds \
+    -9 extraido/arm9.bin \
+    -7 extraido/arm7.bin \
+    -d extraido/datos \
+    -y extraido/overlay \
+    -h extraido/header.bin
+
+<span class="cmt"># Revisa la ayuda de tu versión si una opción no está disponible.</span>
+ndstool -h</code></pre>
+            </div>
+
+            <p>Algunas versiones de herramientas esperan parámetros adicionales para los metadatos de overlays o para campos concretos de la cabecera. La salida de ayuda de la versión instalada es la fuente para confirmar sintaxis. No asumas que una ROM reconstruida conservará todos los bytes idénticos: el padding y la disposición pueden variar aunque el contenido lógico sea el mismo.</p>
+
+            <h2 id="comparacion">9. Comparar antes y después</h2>
+            <p>La comparación permite encontrar cambios inesperados. Empieza por el nivel del contenedor y luego inspecciona el recurso que modificaste. Una diferencia grande de bytes no necesariamente es un error si el reempaquetador reorganizó archivos, pero debe poder explicarse.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Niveles de comparación recomendados</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Nivel</th>
+                            <th scope="col">Qué comparar</th>
+                            <th scope="col">Qué se busca</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Archivo completo</td>
+                            <td>Tamaño, hash e información general.</td>
+                            <td>Detectar que se generó el archivo y que no es idéntico por error.</td>
+                        </tr>
+                        <tr>
+                            <td>Listado NitroFS</td>
+                            <td>Nombres, directorios y cantidad de archivos.</td>
+                            <td>Confirmar que no faltan rutas necesarias.</td>
+                        </tr>
+                        <tr>
+                            <td>Recurso editado</td>
+                            <td>Bytes extraídos de la ROM nueva y la copia de trabajo.</td>
+                            <td>Comprobar que la modificación quedó integrada.</td>
+                        </tr>
+                        <tr>
+                            <td>Regiones no editadas</td>
+                            <td>Ejecutables y recursos que debían permanecer intactos.</td>
+                            <td>Detectar cambios involuntarios.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Si la herramienta puede volver a extraer la ROM reconstruida, úsala y compara los componentes con los archivos de trabajo. Esa comprobación de ida y vuelta confirma que la estructura del contenedor sigue siendo legible sin depender únicamente de que un emulador muestre el menú.</p>
+
+            <h2 id="emulador">10. Pruebas en emulador</h2>
+            <p>Prueba primero en un emulador confiable y registra la versión, la configuración y el punto del juego que verificaste. Un arranque exitoso solo cubre la ruta inicial: si modificaste un menú, escena o recurso que aparece más tarde, visita esa parte de forma explícita.</p>
+
+            <ol>
+                <li><strong>Inicio:</strong> comprueba que la ROM sea reconocida y pase la pantalla inicial.</li>
+                <li><strong>Ruta afectada:</strong> abre el menú, nivel o escena que utiliza el recurso editado.</li>
+                <li><strong>Transiciones:</strong> revisa cambios de escena y cargas dinámicas relacionadas.</li>
+                <li><strong>Audio y controles:</strong> comprueba que el cambio no haya alterado otros componentes.</li>
+                <li><strong>Guardado:</strong> prueba guardar y cargar si la ruta modificada puede afectar esa función.</li>
+                <li><strong>Repetición:</strong> reinicia la aplicación y reproduce la prueba para descartar un resultado accidental.</li>
+            </ol>
+
+            <p>Si dispones de más de un emulador, una segunda prueba puede ayudar a distinguir un problema del archivo de una peculiaridad del emulador. No uses estados guardados antiguos como única prueba: inicia también una sesión limpia cuando sea posible.</p>
+
+            <h2 id="diagnostico">11. Diagnosticar fallos</h2>
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Diagnóstico inicial de una ROM reconstruida</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Síntoma</th>
+                            <th scope="col">Posible causa</th>
+                            <th scope="col">Siguiente comprobación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>La ROM no se reconoce</td>
+                            <td>Salida incompleta, cabecera inconsistente o archivo equivocado.</td>
+                            <td>Revisa el tamaño, el log del reempaquetador y la cabecera.</td>
+                        </tr>
+                        <tr>
+                            <td>Se congela durante el arranque</td>
+                            <td>Ejecutable, overlay o metadatos incompatibles.</td>
+                            <td>Reconstruye sin cambios para probar la extracción base.</td>
+                        </tr>
+                        <tr>
+                            <td>El juego arranca, pero falta un recurso</td>
+                            <td>Ruta, nombre o entrada de NitroFS incorrectos.</td>
+                            <td>Compara el inventario de archivos y vuelve a extraer la salida.</td>
+                        </tr>
+                        <tr>
+                            <td>Un recurso aparece corrupto</td>
+                            <td>Formato, compresión, paleta o dimensiones equivocadas.</td>
+                            <td>Compara el recurso extraído con la versión editada byte a byte.</td>
+                        </tr>
+                        <tr>
+                            <td>El cambio no aparece</td>
+                            <td>Se editó una copia que no se usó al reconstruir.</td>
+                            <td>Confirma la ruta pasada al comando y vuelve a extraer la ROM final.</td>
+                        </tr>
+                        <tr>
+                            <td>La salida difiere mucho del original</td>
+                            <td>Reorganización, alineación o cambios inesperados.</td>
+                            <td>Compara por componentes y revisa el log de la herramienta.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Una técnica útil es reconstruir primero una ROM sin modificaciones y probarla. Si esa copia falla, el problema probablemente está en la extracción, las opciones o la compatibilidad de la herramienta, no en el recurso editado. Después introduce un único cambio y repite el mismo procedimiento.</p>
+
+            <h2 id="registro">12. Registro de trabajo</h2>
+            <p>Un registro breve evita repetir pruebas y facilita volver a un estado conocido. Anota también resultados negativos: saber qué versión de un archivo produjo un fallo puede ahorrar tiempo en la siguiente iteración.</p>
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>cambios.txt</span><span>PLANTILLA</span></div>
+                <pre><code>ROM de origen:
+Tamaño y región:
+Hash de origen:
+Versión de ndstool:
+Archivos extraídos:
+Archivo modificado:
+Descripción del cambio:
+Comando de reconstrucción:
+Ruta de salida:
+Emulador y versión:
+Pasos de prueba:
+Resultado:
+Pendientes:</code></pre>
+            </div>
+
+            <p>Guarda una versión del registro por iteración o añade una sección fechada a tu cuaderno. Evita anotar contraseñas, datos personales o información que no sea necesaria para reproducir el trabajo.</p>
+
+            <h2 id="practica">13. Lista de comprobación final</h2>
+            <p>Antes de considerar terminada una modificación, repasa estas etapas de forma independiente:</p>
+            <ul>
+                <li>El original se conserva y la salida se escribió en otro archivo.</li>
+                <li>La herramienta y su versión quedaron anotadas.</li>
+                <li>La extracción generó los componentes esperados sin errores ignorados.</li>
+                <li>El recurso se modificó con una herramienta compatible con su formato.</li>
+                <li>Los archivos de trabajo corresponden a la misma ROM de origen.</li>
+                <li>La reconstrucción terminó correctamente y creó un archivo no vacío.</li>
+                <li>La salida pudo volver a extraerse o inspeccionarse.</li>
+                <li>El recurso nuevo se confirmó dentro de la ROM final.</li>
+                <li>La prueba cubrió la parte del juego que utiliza el recurso editado.</li>
+                <li>Los resultados y los pasos reproducibles quedaron registrados.</li>
+            </ul>
+
+            <div class="reader-callout info">
+                <span class="reader-callout-title">Una prueba exitosa es específica</span>
+                <p>Indica qué se probó, en qué versión y bajo qué condiciones. «Arranca» no significa que todas las escenas, overlays y archivos estén correctos; una verificación útil deja claro qué comportamiento se comprobó y cuál queda pendiente.</p>
+            </div>
+
+            <footer class="reader-footer">
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="nds-04-hexadecimal-y-endianness.html">&lt;&lt; Hex y endianness</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="switch-01-layeredfs.html">Capas de archivos &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // NDS/0x05_REEMPAQUETADO // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Capa de administración: estructura de modales y paneles requerida dinámicamente por admin.js para inyección de eventos y control de estado -->
+
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la plataforma: deben cargarse secuencialmente para garantizar las dependencias de inicialización entre consola.js, main.js y la gestión de sesión en admin.js -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

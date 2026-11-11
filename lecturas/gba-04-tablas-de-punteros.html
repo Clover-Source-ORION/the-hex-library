@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablas de punteros | The Hex Library</title>
+    <meta name="description" content="Guía práctica para interpretar punteros y tablas en ROMs de GBA, convertir direcciones, validar referencias y planificar una reubicación segura.">
+
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+
+    <!-- Fuentes externas: Fira Code y VT323 provistas por Google Fonts bajo licencia SIL Open Font License (OFL) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <!-- Atributos data-editable: vinculan los nodos de texto directamente con el módulo de edición frontend en admin.js -->
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>GBA/0x04_PUNTEROS</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>AGB-001 &middot; ROM</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.1 &nbsp;//&nbsp; lectura ~12 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag gba">GBA</span>
+            <h1>Tablas de punteros</h1>
+            <p class="reader-lead">Una tabla de punteros se parece al índice de un libro: no contiene los recursos, sino referencias que indican dónde encontrarlos. En esta lectura aprenderás a distinguir direcciones de offsets, reconocer patrones sin confiar en una sola pista y validar cada cambio antes de probarlo en el juego.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#puntero">¿Qué es un puntero?</a></li>
+                        <li><a href="#direcciones">Direcciones y offsets</a></li>
+                        <li><a href="#endianness">Little-Endian en el editor hexadecimal</a></li>
+                        <li><a href="#tabla">Cómo reconocer una tabla</a></li>
+                        <li><a href="#estructuras">Entradas y estructuras repetidas</a></li>
+                        <li><a href="#inversa">Búsqueda inversa</a></li>
+                        <li><a href="#formatos">Formatos distintos de puntero absoluto</a></li>
+                        <li><a href="#reubicacion">Reubicación con control</a></li>
+                        <li><a href="#verificacion">Verificación y errores comunes</a></li>
+                        <li><a href="#practica">Práctica y lista de comprobación</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="puntero">1. ¿Qué es un puntero?</h2>
+            <p>Un <strong>puntero</strong> es un valor que identifica la ubicación de otro dato. En muchos juegos de GBA, las referencias a recursos de ROM se almacenan como palabras de 32 bits; el procesador usa una dirección de su mapa de memoria, mientras que el editor hexadecimal muestra un offset dentro del archivo. Son dos formas de nombrar ubicaciones diferentes.</p>
+            <p>La ROM suele ser visible desde la ventana que comienza en <code>0x08000000</code>. Por eso es frecuente encontrar palabras como <code>0x083B4E80</code>. No todos los juegos almacenan direcciones absolutas ni toda palabra que empiece por <code>08</code> es automáticamente un puntero: hay que confirmar el formato y el contexto.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>ejemplo_puntero.hex</span><span>HEX</span></div>
+                <pre><code><span class="cmt">// bytes en la ROM</span>
+80 4E 3B 08
+
+<span class="cmt">// valor numérico Little-Endian: 0x083B4E80</span>
+<span class="cmt">// offset para la ventana 0x08: 0x083B4E80 - 0x08000000</span>
+<span class="cmt">// resultado: 0x003B4E80</span></code></pre>
+            </div>
+
+            <h2 id="direcciones">2. Direcciones y offsets</h2>
+            <p>Para un puntero directo a la ventana que empieza en <code>0x08000000</code>, la conversión habitual es sumar o restar esa base. La máscara puede ser una abreviatura, pero solo debe usarse cuando ya sabes que el puntero pertenece a esa ventana y el offset cabe en el archivo.</p>
+            <ul>
+                <li><strong>Offset a dirección:</strong> <code>dirección = 0x08000000 + offset</code>.</li>
+                <li><strong>Dirección a offset:</strong> <code>offset = dirección - 0x08000000</code>.</li>
+                <li><strong>Ejemplo:</strong> <code>0x08000000 + 0x003B4E80 = 0x083B4E80</code>.</li>
+            </ul>
+
+            <div class="reader-callout info">
+                <span class="reader-callout-title">No conviertas a ciegas</span>
+                <p>La operación <code>puntero &amp; 0x01FFFFFF</code> solo obtiene los bits inferiores. No comprueba que el puntero esté en la ventana correcta ni que el destino exista. Una conversión aparentemente razonable todavía puede apuntar fuera del archivo.</p>
+            </div>
+
+            <h2 id="endianness">3. Little-Endian en el editor hexadecimal</h2>
+            <p>Los valores multibyte de GBA suelen almacenarse en <strong>Little-Endian</strong>: el byte menos significativo aparece primero en el archivo. Para reconstruir el número, el orden de lectura de los bytes se invierte; no se invierten los bits que hay dentro de cada byte.</p>
+            <p>La palabra <code>0x083B4E80</code> se divide en los bytes <code>08</code>, <code>3B</code>, <code>4E</code> y <code>80</code>. En el archivo se ven en el orden contrario: <code>80 4E 3B 08</code>. Cuando escribas una dirección nueva, codifícala también en Little-Endian.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>codificar_puntero.txt</span><span>HEX</span></div>
+                <pre><code>Dirección: 0x08123456
+Bytes:     56 34 12 08
+
+Dirección: 0x08002000
+Bytes:     00 20 00 08</code></pre>
+            </div>
+
+            <h2 id="tabla">4. Cómo reconocer una tabla</h2>
+            <p>Una tabla de punteros suele ser una serie de entradas contiguas que comparten un formato. Las siguientes señales ayudan a encontrar candidatas, pero ninguna basta por sí sola para confirmar que una región sea una tabla:</p>
+            <ul>
+                <li><strong>Valores válidos:</strong> al convertirlos con la regla correcta, varios apuntan dentro del archivo.</li>
+                <li><strong>Repetición:</strong> las entradas aparecen con un ancho regular, por ejemplo cada 4 bytes.</li>
+                <li><strong>Destinos coherentes:</strong> los offsets resultantes caen al inicio de textos, gráficos u otras estructuras reconocibles.</li>
+                <li><strong>Referencias de código:</strong> una rutina lee las entradas con el tamaño y el formato que propones.</li>
+            </ul>
+            <p>Una serie creciente es común cuando los recursos se almacenaron uno tras otro, pero no es un requisito. También puede haber destinos repetidos, datos compartidos, orden distinto al de la tabla o recursos repartidos en varias zonas.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>candidata_a_tabla.hex</span><span>HEX</span></div>
+                <pre><code><span class="off">00A10000</span>: 10 20 3B 08  4C 20 3B 08  88 20 3B 08
+
+<span class="cmt">// Valores interpretados: 0x083B2010, 0x083B204C, 0x083B2088</span>
+<span class="cmt">// Offsets:               0x003B2010, 0x003B204C, 0x003B2088</span>
+<span class="cmt">// Diferencias:           0x3C y 0x3C (pista, no prueba)</span></code></pre>
+            </div>
+            <p>En el ejemplo, la separación de <code>0x3C</code> puede corresponder al tamaño de recursos de longitud fija, a una alineación o a una coincidencia. Inspecciona los destinos y busca más entradas antes de concluir que cada dato mide exactamente 60 bytes.</p>
+
+            <h2 id="estructuras">5. Entradas y estructuras repetidas</h2>
+            <p>Una tabla también puede apuntar a registros de tamaño fijo. En ese caso, cada registro contiene varios campos y solo algunos son punteros. Una separación regular entre registros no significa que todos sus campos sean direcciones.</p>
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>registro_objeto.c</span><span>ESTRUCTURA</span></div>
+                <pre><code>struct Objeto {
+    uint16_t id;
+    uint16_t precio;
+    uint32_t puntero_nombre;
+    uint32_t puntero_descripcion;
+};
+
+<span class="cmt">// Tamaño ilustrativo: 12 bytes, si el compilador no inserta padding.</span>
+<span class="cmt">// Los dos punteros están en +0x04 y +0x08.</span></code></pre>
+            </div>
+            <p>En una ROM no hay nombres de campos ni tipos. Para reconstruir un registro, registra los offsets relativos de cada posible campo, comprueba si el patrón se repite y valida cada supuesto por separado. Un número pequeño que varía poco puede ser un identificador o una longitud, no un puntero.</p>
+            <ul>
+                <li><strong>Ancho:</strong> confirma si el campo ocupa 2, 3 o 4 bytes.</li>
+                <li><strong>Stride:</strong> mide la distancia entre el inicio de registros consecutivos.</li>
+                <li><strong>Campos:</strong> anota qué posiciones parecen direcciones y cuáles podrían ser atributos.</li>
+                <li><strong>Destino:</strong> prueba cada campo con una conversión independiente y comprueba el contenido.</li>
+            </ul>
+
+            <h2 id="inversa">6. Búsqueda inversa</h2>
+            <p>La búsqueda inversa parte de un recurso cuya ubicación ya conoces y busca qué bytes podrían referenciarlo. Calcula la dirección candidata usando el formato confirmado, conviértela a Little-Endian y busca esa secuencia en el archivo. Anota <em>todas</em> las coincidencias: una puede ser una referencia real y otras pueden aparecer por casualidad dentro de datos.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>buscar_referencias.py</span><span>PYTHON 3</span></div>
+                <pre><code>import struct
+from pathlib import Path
+
+def buscar_referencias(rom_path, offset_destino):
+    rom = Path(rom_path).read_bytes()
+    if not 0 &lt;= offset_destino &lt; len(rom):
+        raise ValueError("El destino debe estar dentro de la ROM")
+    if offset_destino &gt;= 0x02000000:
+        raise ValueError("El ejemplo solo admite la ventana 0x08")
+
+    direccion = 0x08000000 + offset_destino
+    patron = struct.pack("&lt;I", direccion)
+    resultados = []
+    inicio = 0
+
+    while True:
+        posicion = rom.find(patron, inicio)
+        if posicion == -1:
+            break
+        resultados.append(posicion)
+        inicio = posicion + 1
+
+    return resultados
+
+for posicion in buscar_referencias("juego.gba", 0x003B4E80):
+    print(f"Posible referencia en ROM+0x{posicion:06X}")</code></pre>
+            </div>
+            <p>Este programa solo busca palabras absolutas en la ventana <code>0x08</code>; no detecta offsets relativos, entradas comprimidas ni punteros de otro tamaño. Cada resultado requiere contexto. Examina la zona que lo rodea y comprueba si el código o una estructura repetida realmente consume esa palabra como referencia.</p>
+
+            <h2 id="formatos">7. Formatos distintos de puntero absoluto</h2>
+            <p>Si las direcciones aparentes no encajan, puede que el motor guarde otra representación. Busca evidencia en las instrucciones que leen la tabla o en una rutina conocida antes de aplicar una conversión distinta.</p>
+            <ul>
+                <li><strong>Offset relativo:</strong> se suma a una base común o a la ubicación de la propia entrada.</li>
+                <li><strong>Dirección empaquetada:</strong> ciertos bits pueden indicar un tipo, un banco o flags.</li>
+                <li><strong>Valor de 16 o 24 bits:</strong> puede ser un offset reducido o un índice dentro de otra tabla.</li>
+                <li><strong>Sentinela:</strong> valores como <code>0x00000000</code> o <code>0xFFFFFFFF</code> pueden significar «sin dato».</li>
+                <li><strong>Referencia comprimida:</strong> el dato puede requerir descompresión y tener una longitud almacenada aparte.</li>
+            </ul>
+            <div class="reader-callout info">
+                <span class="reader-callout-title">Primero observa, después interpreta</span>
+                <p>Que un valor pueda convertirse en un offset dentro del archivo no prueba que sea un puntero. Verifica cómo se calcula el destino y qué hace el programa cuando encuentra valores especiales.</p>
+            </div>
+
+            <h2 id="reubicacion">8. Reubicación con control</h2>
+            <p>Cuando un recurso nuevo ocupa más espacio, puede ser necesario moverlo y actualizar las referencias. No basta con encontrar una secuencia de <code>FF</code>: podría ser relleno usado por otra estructura o formar parte de un bloque comprimido. Sigue un proceso reversible y conserva siempre el archivo original.</p>
+            <ol>
+                <li><strong>Duplica la ROM:</strong> trabaja sobre una copia y guarda una copia limpia sin modificar.</li>
+                <li><strong>Determina los límites:</strong> conoce el principio, la longitud y cualquier terminador o cabecera del recurso.</li>
+                <li><strong>Confirma el espacio:</strong> revisa que el rango de destino no esté ocupado ni reservado.</li>
+                <li><strong>Respeta las restricciones:</strong> considera alineación, tamaño máximo de ROM y rango del formato de puntero.</li>
+                <li><strong>Escribe el recurso completo:</strong> incluye cabeceras, tamaños y datos auxiliares si el motor los requiere.</li>
+                <li><strong>Actualiza referencias:</strong> identifica si hay más de una entrada o una tabla duplicada.</li>
+                <li><strong>Comprueba el cambio:</strong> vuelve a leer los bytes escritos antes de abrir el juego.</li>
+            </ol>
+            <p>Si el puntero es absoluto de la ventana <code>0x08</code>, un destino situado en el offset <code>0x00400000</code> se codifica como la dirección <code>0x08400000</code>, es decir, los bytes <code>00 00 40 08</code>. Calcula el valor con una herramienta o una operación explícita; evita escribirlo de memoria.</p>
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Las referencias antiguas también cuentan</span>
+                <p>Un mismo recurso puede estar referenciado desde más de una tabla o desde código directo. Actualizar solo una coincidencia puede dejar el juego en un estado inconsistente. Revisa cada referencia y prueba todas las pantallas o acciones que usan ese dato.</p>
+            </div>
+
+            <h2 id="verificacion">9. Verificación y errores comunes</h2>
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Diagnóstico inicial de problemas con punteros</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Síntoma</th>
+                            <th scope="col">Posible causa</th>
+                            <th scope="col">Comprobación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>El destino cae fuera del archivo</td>
+                            <td>Endian incorrecto, base equivocada o formato distinto.</td>
+                            <td>Decodifica bytes y confirma la ventana antes de convertir.</td>
+                        </tr>
+                        <tr>
+                            <td>Se ve parte del recurso equivocado</td>
+                            <td>Offset apunta al interior de un bloque o la longitud se calculó mal.</td>
+                            <td>Inspecciona cabeceras, terminadores y límites del recurso.</td>
+                        </tr>
+                        <tr>
+                            <td>Un cambio no aparece en el juego</td>
+                            <td>Se modificó una copia secundaria o la ruta usa otra tabla.</td>
+                            <td>Busca todas las referencias y sigue el flujo de uso.</td>
+                        </tr>
+                        <tr>
+                            <td>El juego se bloquea después del cambio</td>
+                            <td>Puntero inválido, datos truncados o metadatos omitidos.</td>
+                            <td>Compara bytes, longitud, compresión y checksum si aplica.</td>
+                        </tr>
+                        <tr>
+                            <td>La tabla parece válida pero apunta a basura</td>
+                            <td>Coincidencia accidental o interpretación errónea del formato.</td>
+                            <td>Verifica varias entradas y busca la rutina que las consume.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>Haz las comprobaciones en orden: confirma el valor hexadecimal, conviértelo, valida el rango del archivo y analiza el contenido en el destino. Solo entonces prueba el juego. Cambiar varias cosas a la vez dificulta saber cuál produjo el fallo.</p>
+
+            <h2 id="practica">10. Práctica y lista de comprobación</h2>
+            <p>Usa estos ejemplos para practicar con una ROM de prueba o con datos inventados; no cambies el volcado original.</p>
+            <ol>
+                <li>Convierte <code>0x083B4E80</code> a offset suponiendo que pertenece a la ventana <code>0x08</code>.</li>
+                <li>Escribe en Little-Endian la dirección <code>0x08123456</code>.</li>
+                <li>Explica por qué una coincidencia aislada de cuatro bytes no confirma una referencia.</li>
+                <li>Si dos recursos tienen direcciones separadas por <code>0x40</code>, enumera dos razones por las que eso no demuestra que el primero mida 64 bytes.</li>
+                <li>Busca una entrada cuyo destino conozcas y compara el contexto de la coincidencia con otras entradas candidatas.</li>
+            </ol>
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Antes de guardar una modificación</span>
+                <ul>
+                    <li>¿La ROM de trabajo es una copia y el original permanece intacto?</li>
+                    <li>¿Se conoce el tamaño, el endianness y el formato de cada entrada?</li>
+                    <li>¿El destino convertido cae dentro del archivo y señala datos coherentes?</li>
+                    <li>¿Se revisaron las referencias adicionales y los valores especiales?</li>
+                    <li>¿Se comprobó el recurso extraído y se probó la ruta afectada en el juego?</li>
+                </ul>
+            </div>
+
+            <footer class="reader-footer">
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="gba-03-cabecera-de-cartucho.html">&lt;&lt; Cabecera del cartucho</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="gba-05-compresion-lz77.html">Compresión LZ77 &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // GBA/0x04_PUNTEROS // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Capa de administración: estructura de modales y paneles requerida dinámicamente por admin.js para inyección de eventos y control de estado -->
+
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la plataforma: deben cargarse secuencialmente para garantizar las dependencias de inicialización entre consola.js, main.js y la gestión de sesión en admin.js -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

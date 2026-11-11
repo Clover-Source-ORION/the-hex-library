@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexadecimal y little endian en DS | The Hex Library</title>
+    <meta name="description" content="Guía práctica de hexadecimal, endianness, tamaños de dato y conversión entre offsets de archivo y direcciones de RAM en Nintendo DS.">
+
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+
+    <!-- Fuentes externas: Fira Code y VT323 provistas por Google Fonts bajo licencia SIL Open Font License (OFL) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <!-- Atributos data-editable: vinculan los nodos de texto directamente con el módulo de edición frontend en admin.js -->
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>NDS/0x04_HEX_ENDIAN</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>NTR-001 &middot; ARM9</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.1 &nbsp;//&nbsp; lectura ~12 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag nds">NDS</span>
+            <h1>Hexadecimal y little endian en DS</h1>
+            <p class="reader-lead">Antes de analizar archivos de Nintendo DS conviene dominar la lectura hexadecimal y distinguir cómo se representan los valores de varios bytes. Esta guía recorre bytes, endianness y direcciones con ejemplos para que puedas inspeccionar una ROM sin confundir posiciones del archivo con direcciones de memoria.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#hex">Un byte, dos dígitos</a></li>
+                        <li><a href="#endian">Little endian: el truco del revés</a></li>
+                        <li><a href="#ram">De dirección de RAM a offset</a></li>
+                        <li><a href="#binario">Bits, nibbles y conversiones</a></li>
+                        <li><a href="#anchos">Tamaños, signo y valores</a></li>
+                        <li><a href="#lectura">Leer un volcado hexadecimal</a></li>
+                        <li><a href="#alineacion">Alineación y límites</a></li>
+                        <li><a href="#nds-mapa">Archivo NDS y mapa de memoria</a></li>
+                        <li><a href="#arm9">Ejemplo con ARM9</a></li>
+                        <li><a href="#herramientas">Lectura con herramientas y Python</a></li>
+                        <li><a href="#errores">Errores frecuentes</a></li>
+                        <li><a href="#practica">Práctica y lista de comprobación</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="hex">1. Un byte, dos dígitos</h2>
+
+            <p>Un byte contiene ocho bits y puede representar un valor sin signo entre <code>0</code> y <code>255</code>. En hexadecimal se escribe con dos dígitos, desde <code>0x00</code> hasta <code>0xFF</code>. Cada dígito hexadecimal representa cuatro bits, también llamados <em>nibble</em>; por ejemplo, <code>0xA7</code> equivale a <code>1010 0111</code> en binario.</p>
+            <p>El prefijo <code>0x</code> indica que el número está expresado en base 16. No forma parte de los bytes almacenados. En un volcado, la secuencia <code>A7 03</code> son dos bytes consecutivos: <code>0xA7</code> seguido por <code>0x03</code>.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Equivalencias útiles entre bases</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Decimal</th>
+                            <th scope="col">Hexadecimal</th>
+                            <th scope="col">Binario</th>
+                            <th scope="col">Uso como byte</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>0</td>
+                            <td><code>0x00</code></td>
+                            <td><code>0000 0000</code></td>
+                            <td>Todos los bits apagados.</td>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td><code>0x0A</code></td>
+                            <td><code>0000 1010</code></td>
+                            <td>Bits 1 y 3 activados.</td>
+                        </tr>
+                        <tr>
+                            <td>127</td>
+                            <td><code>0x7F</code></td>
+                            <td><code>0111 1111</code></td>
+                            <td>Mayor entero con signo de 8 bits.</td>
+                        </tr>
+                        <tr>
+                            <td>255</td>
+                            <td><code>0xFF</code></td>
+                            <td><code>1111 1111</code></td>
+                            <td>Mayor entero sin signo de 8 bits.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="endian">2. Little endian: el truco del revés</h2>
+
+            <p>Los procesadores ARM de la Nintendo DS usan habitualmente el orden <strong>little-endian</strong> para los valores multibyte: el byte menos significativo se almacena primero. Para reconstruir el número, se lee la secuencia de bytes desde el último hacia el primero. El orden de los bits dentro de cada byte no cambia.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>endian.txt</span><span>HEX</span></div>
+                <pre><code>78 56 34 12   <span class="cmt">// en el archivo</span>
+0x12345678    <span class="cmt">// valor numérico de 32 bits</span>
+
+34 12         <span class="cmt">// en el archivo</span>
+0x1234        <span class="cmt">// valor numérico de 16 bits</span></code></pre>
+            </div>
+            <p>La palabra «real» puede resultar engañosa: el volcado siempre contiene los bytes en el orden que muestra el editor. Little-endian es una regla para interpretar varios bytes como un solo número; no significa que debas invertir el archivo ni que el contenido textual tenga que leerse al revés.</p>
+
+            <h2 id="ram">3. De dirección de RAM a offset</h2>
+
+            <p>Un <strong>offset</strong> es una posición contada desde el comienzo de un archivo. Una <strong>dirección de RAM</strong> es una ubicación del espacio de memoria que el procesador usa al ejecutar el programa. Para convertir entre ambas hace falta saber qué región del archivo se carga en qué dirección; no existe una resta universal que sirva para cualquier parte de una ROM.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Offset del archivo y direcciones de memoria</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Valor</th>
+                            <th scope="col">Tipo</th>
+                            <th scope="col">Interpretación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr"><code>0x000000</code></td>
+                            <td>Offset</td>
+                            <td>Primer byte del archivo <code>.nds</code>.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x02000000</code></td>
+                            <td>Dirección de memoria</td>
+                            <td>Inicio de la WRAM principal en el mapa de memoria DS.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x02380000</code></td>
+                            <td>Dirección de memoria</td>
+                            <td>Ejemplo de dirección de carga común para una región ARM9; debe confirmarse en la cabecera.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Fórmula para una región cargada</span>
+                <p>Offset relativo al binario = dirección de RAM − dirección de carga del binario. Para obtener un offset del archivo <code>.nds</code>, también hay que sumar el offset de origen del binario dentro de la ROM. Ambos datos se leen de la cabecera y describen regiones concretas.</p>
+            </div>
+
+            <p>Por ejemplo, si la cabecera indica que <code>arm9.bin</code> empieza en el archivo en <code>0x4000</code> y se carga en RAM en <code>0x02000000</code>, la dirección <code>0x02000120</code> corresponde al offset <code>0x120</code> dentro del binario y al offset <code>0x4120</code> en la ROM. Esta relación solo aplica a bytes que pertenecen a esa región cargada.</p>
+
+            <h2 id="binario">4. Bits, nibbles y conversiones</h2>
+            <p>Hexadecimal es cómodo porque cada dígito corresponde exactamente a cuatro bits. Para inspeccionar flags o campos empaquetados, conviene escribir el byte en binario y numerar las posiciones desde cero, empezando por el bit menos significativo.</p>
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>bits_y_nibbles.txt</span><span>BINARIO</span></div>
+                <pre><code>Hex:      0xA7
+Binario:  1010 0111
+Nibble:   A    7
+
+Bit:      7 6 5 4 3 2 1 0
+Valor:    1 0 1 0 0 1 1 1</code></pre>
+            </div>
+            <p>El valor de un nibble puede extraerse con una máscara. El nibble bajo conserva los bits 0 a 3; el nibble alto conserva los bits 4 a 7. Para interpretar los bits como banderas, primero consulta la estructura del formato: no asumas que todos representan opciones independientes.</p>
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>mascaras.txt</span><span>OPERACIONES</span></div>
+                <pre><code>byte = 0xA7
+nibble_bajo = byte &amp; 0x0F       <span class="cmt">// 0x07</span>
+nibble_alto = (byte &gt;&gt; 4) &amp; 0x0F <span class="cmt">// 0x0A</span>
+
+bit_2 = (byte &gt;&gt; 2) &amp; 1         <span class="cmt">// 1</span></code></pre>
+            </div>
+
+            <h2 id="anchos">5. Tamaños, signo y valores</h2>
+            <p>Antes de interpretar una secuencia, determina cuántos bytes ocupa el campo. El mismo patrón de bits puede significar distintos números según se lea como entero de 8, 16 o 32 bits, y según sea con signo o sin signo.</p>
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Rangos de enteros comunes</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Ancho</th>
+                            <th scope="col">Sin signo</th>
+                            <th scope="col">Con signo</th>
+                            <th scope="col">Bytes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>8 bits</td>
+                            <td><code>0</code> a <code>255</code></td>
+                            <td><code>-128</code> a <code>127</code></td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>16 bits</td>
+                            <td><code>0</code> a <code>65 535</code></td>
+                            <td><code>-32 768</code> a <code>32 767</code></td>
+                            <td>2</td>
+                        </tr>
+                        <tr>
+                            <td>32 bits</td>
+                            <td><code>0</code> a <code>4 294 967 295</code></td>
+                            <td><code>-2 147 483 648</code> a <code>2 147 483 647</code></td>
+                            <td>4</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>En complemento a dos, el bit más alto distingue la mitad negativa del rango con signo. Por ejemplo, el byte <code>FF</code> puede ser <code>255</code> sin signo o <code>-1</code> con signo. Los bytes no indican por sí mismos cuál interpretación es la correcta; el programa que los consume y el formato de datos determinan el tipo.</p>
+
+            <h2 id="lectura">6. Leer un volcado hexadecimal</h2>
+            <p>Un editor suele mostrar el offset de cada fila, los bytes en hexadecimal y una columna de texto aproximada. La columna ASCII ayuda a localizar cadenas, pero los valores fuera del rango imprimible se muestran como puntos u otros símbolos y no son necesariamente errores.</p>
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>volcado_ejemplo.txt</span><span>HEX DUMP</span></div>
+                <pre><code>Offset      Bytes                                      Texto
+00001000    48 45 4C 4C 4F 00 20 00 78 56 34 12       HELLO. .xV4.
+0000100C    FF 7F 00 00 02 00 00 00 41 42 43 44       ........ABCD
+
+0x1000 a 0x1004   Texto ASCII: "HELLO"
+0x1005             Terminador cero
+0x1008 a 0x100B   Entero LE de 32 bits: 0x12345678</code></pre>
+            </div>
+            <p>Los offsets de la columna izquierda suelen señalar el primer byte de la fila. Si una fila contiene 16 bytes, la siguiente dirección aumenta en <code>0x10</code>. Antes de copiar bytes de una captura, confirma el offset inicial y el número de bytes seleccionados.</p>
+
+            <h2 id="alineacion">7. Alineación y límites</h2>
+            <p>Algunas estructuras colocan campos en fronteras específicas, por ejemplo, una palabra de 32 bits en un offset múltiplo de cuatro. La alineación es una convención de la estructura o del código que accede a ella; no es una regla que permita concluir por sí sola que cualquier posición desalineada sea incorrecta.</p>
+            <ul>
+                <li><strong>Byte:</strong> puede comenzar en cualquier offset.</li>
+                <li><strong>Halfword de 16 bits:</strong> a menudo se alinea a 2 bytes.</li>
+                <li><strong>Word de 32 bits:</strong> a menudo se alinea a 4 bytes.</li>
+                <li><strong>Bloque empaquetado:</strong> puede no estar alineado como un entero nativo; interpreta según su formato.</li>
+            </ul>
+            <p>Los límites también importan: para leer un valor de cuatro bytes desde el offset <code>n</code>, deben existir los bytes <code>n</code>, <code>n+1</code>, <code>n+2</code> y <code>n+3</code>. Una lectura que termina un byte después del archivo es un error, aunque el valor parcialmente leído parezca plausible.</p>
+
+            <h2 id="nds-mapa">8. Archivo NDS y mapa de memoria</h2>
+            <p>Una ROM de DS contiene una cabecera y regiones como el ejecutable ARM9, el ejecutable ARM7 y el sistema de archivos NitroFS. Los offsets de esas regiones pertenecen al archivo; las direcciones de carga y los puntos de entrada pertenecen al mapa de memoria. La cabecera proporciona los pares necesarios para relacionar las regiones ejecutables.</p>
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Campos que conviene separar al analizar una ROM</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Campo</th>
+                            <th scope="col">Espacio</th>
+                            <th scope="col">Pregunta que responde</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Offset del ejecutable en ROM</td>
+                            <td>Archivo</td>
+                            <td>¿Dónde comienzan sus bytes en el archivo?</td>
+                        </tr>
+                        <tr>
+                            <td>Dirección de carga</td>
+                            <td>Memoria</td>
+                            <td>¿Dónde se copia el ejecutable para correr?</td>
+                        </tr>
+                        <tr>
+                            <td>Tamaño del ejecutable</td>
+                            <td>Bytes</td>
+                            <td>¿Qué rango se copia o procesa?</td>
+                        </tr>
+                        <tr>
+                            <td>Punto de entrada</td>
+                            <td>Memoria</td>
+                            <td>¿En qué dirección comienza la ejecución?</td>
+                        </tr>
+                        <tr>
+                            <td>Offset de un archivo NitroFS</td>
+                            <td>Archivo/contenedor</td>
+                            <td>¿Dónde comienza ese archivo dentro de la ROM?</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>Un archivo almacenado en NitroFS no tiene por qué cargarse en la dirección que usa el ejecutable ARM9. El juego puede leerlo, descomprimirlo y copiarlo a una región de RAM diferente. No apliques la fórmula de una región ejecutable a recursos del sistema de archivos sin evidencia de que comparten ese mapeo.</p>
+
+            <h2 id="arm9">9. Ejemplo con ARM9</h2>
+            <p>Supongamos que los campos de la cabecera de una ROM indican que el binario ARM9 comienza en el offset <code>0x4000</code> y se carga en <code>0x02000000</code>. Si una dirección de una referencia cae en <code>0x02000120</code>, podemos calcular su posición relativa dentro del binario y su posición dentro de la ROM.</p>
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>conversion_arm9.txt</span><span>EJEMPLO</span></div>
+                <pre><code>Offset ARM9 en ROM:       0x00004000
+Dirección de carga ARM9:  0x02000000
+Dirección a investigar:   0x02000120
+
+Offset dentro de ARM9:
+0x02000120 - 0x02000000 = 0x00000120
+
+Offset equivalente en ROM:
+0x00004000 + 0x00000120 = 0x00004120</code></pre>
+            </div>
+            <p>Antes de aceptar el resultado, verifica que la dirección esté dentro del rango de carga ARM9 descrito por la cabecera. La fórmula no convierte direcciones de otras regiones, direcciones de RAM dinámica ni datos que el juego haya copiado a una ubicación diferente.</p>
+
+            <h2 id="herramientas">10. Lectura con herramientas y Python</h2>
+            <p>Los editores hexadecimales permiten inspeccionar bytes sin alterar el archivo. Para automatizar lecturas, especifica siempre el endianness y comprueba que la cantidad solicitada se haya leído completa.</p>
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>leer_enteros.py</span><span>PYTHON 3</span></div>
+                <pre><code>import struct
+from pathlib import Path
+
+rom = Path("juego.nds").read_bytes()
+offset = 0x1000
+
+if offset + 4 &gt; len(rom):
+    raise ValueError("No hay cuatro bytes disponibles en ese offset")
+
+valor_le = struct.unpack_from("&lt;I", rom, offset)[0]
+valor_be = struct.unpack_from("&gt;I", rom, offset)[0]
+
+print(f"Little-endian: 0x{valor_le:08X}")
+print(f"Big-endian:    0x{valor_be:08X}")</code></pre>
+            </div>
+            <p>El prefijo <code>&lt;</code> solicita little-endian y <code>&gt;</code> big-endian; <code>I</code> indica un entero sin signo de 32 bits. Para un campo de 16 bits se usa <code>H</code>, y para un byte individual se puede indexar directamente el arreglo de bytes. Selecciona el tipo que indique la estructura analizada.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>tabla_de_tamanos.txt</span><span>PYTHON STRUCT</span></div>
+                <pre><code>"&lt;B"  <span class="cmt">// 1 byte sin signo</span>
+"&lt;H"  <span class="cmt">// 2 bytes sin signo little-endian</span>
+"&lt;I"  <span class="cmt">// 4 bytes sin signo little-endian</span>
+"&lt;i"  <span class="cmt">// 4 bytes con signo little-endian</span></code></pre>
+            </div>
+
+            <h2 id="errores">11. Errores frecuentes</h2>
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Problemas típicos al interpretar datos</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Síntoma</th>
+                            <th scope="col">Posible causa</th>
+                            <th scope="col">Qué verificar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Un valor parece enorme</td>
+                            <td>Se interpretó little-endian como big-endian o se usó el ancho equivocado.</td>
+                            <td>Revisa orden de bytes, cantidad de bytes y signo.</td>
+                        </tr>
+                        <tr>
+                            <td>La dirección calculada no coincide con el archivo</td>
+                            <td>Se aplicó la dirección de carga a un offset de NitroFS.</td>
+                            <td>Identifica primero qué región contiene los datos.</td>
+                        </tr>
+                        <tr>
+                            <td>Los bytes en el editor no coinciden con el valor escrito</td>
+                            <td>Se invirtieron todos los bits o se invirtieron bytes dos veces.</td>
+                            <td>Escribe el valor en bytes y contrástalo con un ejemplo conocido.</td>
+                        </tr>
+                        <tr>
+                            <td>La lectura termina con menos datos de los esperados</td>
+                            <td>Offset cercano al final del archivo o tamaño incorrecto.</td>
+                            <td>Comprueba el límite antes de leer.</td>
+                        </tr>
+                        <tr>
+                            <td>Un campo negativo aparece positivo</td>
+                            <td>Se decodificó un entero con signo como no signado.</td>
+                            <td>Consulta la estructura y el tipo usado por el programa.</td>
+                        </tr>
+                        <tr>
+                            <td>Una cadena muestra puntos en el volcado</td>
+                            <td>Los bytes no son caracteres ASCII imprimibles.</td>
+                            <td>Puede ser un campo binario; no lo conviertas en texto a la fuerza.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="practica">12. Práctica y lista de comprobación</h2>
+            <p>Prueba estas conversiones con papel, calculadora hexadecimal o un pequeño script:</p>
+            <ol>
+                <li>Interpreta <code>34 12</code> como entero little-endian de 16 bits.</li>
+                <li>Escribe <code>0x12345678</code> como cuatro bytes little-endian.</li>
+                <li>Indica los nibbles alto y bajo de <code>0xA7</code>.</li>
+                <li>Si el ARM9 comienza en el archivo en <code>0x4000</code> y se carga en <code>0x02000000</code>, convierte <code>0x02000080</code> a offset de ROM.</li>
+                <li>Explica por qué una dirección de RAM no puede convertirse en un offset de NitroFS con la misma fórmula sin más información.</li>
+            </ol>
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Antes de anotar un valor</span>
+                <ul>
+                    <li>¿Conozco el offset inicial y el ancho del campo?</li>
+                    <li>¿Sé si el entero es little-endian, big-endian o un campo empaquetado?</li>
+                    <li>¿Sé si el valor es con signo, sin signo, dirección o tamaño?</li>
+                    <li>¿Estoy trabajando con un offset de archivo o una dirección de memoria?</li>
+                    <li>¿La región y el límite de lectura están confirmados?</li>
+                </ul>
+            </div>
+
+            <footer class="reader-footer">
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="nds-03-graficos-nitro.html">&lt;&lt; Gráficos Nitro</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="nds-05-reempaquetar-y-probar.html">Reempaquetar y probar &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // NDS/0x04_HEX_ENDIAN // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Capa de administración: estructura de modales y paneles requerida dinámicamente por admin.js para inyección de eventos y control de estado -->
+
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la plataforma: deben cargarse secuencialmente para garantizar las dependencias de inicialización entre consola.js, main.js y la gestión de sesión en admin.js -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

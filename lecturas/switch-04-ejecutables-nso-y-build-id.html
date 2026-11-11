@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejecutables NSO y Build ID | The Hex Library</title>
+    <meta name="description" content="Guía de la estructura NSO de Nintendo Switch, sus segmentos, compresión, Build ID y verificación de versiones de módulos.">
+
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+
+    <!-- Fuentes externas: Fira Code y VT323 provistas por Google Fonts bajo licencia SIL Open Font License (OFL) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <!-- Atributos data-editable: vinculan los nodos de texto directamente con el módulo de edición frontend en admin.js -->
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>SWITCH/0x04_NSO</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>HAC &middot; ExeFS</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.1 &nbsp;//&nbsp; lectura ~12 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag switch">SWITCH</span>
+            <h1>Ejecutables NSO y Build ID</h1>
+            <p class="reader-lead">Los programas de Nintendo Switch pueden distribuirse como módulos ejecutables NSO. Su cabecera describe segmentos de código y datos, y contiene un Build ID útil para identificar una compilación concreta. Esta guía explica cómo leer esa información sin confundir módulos, offsets del archivo y direcciones de memoria.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#nso">¿Qué es un NSO?</a></li>
+                        <li><a href="#cabecera">Mapa general de la cabecera</a></li>
+                        <li><a href="#segmentos">Segmentos y direcciones</a></li>
+                        <li><a href="#compresion">Compresión y datos almacenados</a></li>
+                        <li><a href="#buildid">Qué identifica el Build ID</a></li>
+                        <li><a href="#lectura-id">Leer y registrar el Build ID</a></li>
+                        <li><a href="#versiones">Versiones y módulos distintos</a></li>
+                        <li><a href="#flujo">Flujo de inspección</a></li>
+                        <li><a href="#parches">Compatibilidad de parches</a></li>
+                        <li><a href="#diagnostico">Diagnóstico de problemas</a></li>
+                        <li><a href="#practica">Práctica y lista de comprobación</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="nso">1. ¿Qué es un NSO?</h2>
+
+            <p>Un <strong>NSO</strong> es un formato de módulo ejecutable usado en el entorno de Nintendo Switch. Un archivo NSO comienza con la firma ASCII <code>NSO0</code>. La cabecera describe segmentos, tamaños, flags y otros metadatos necesarios para localizar y cargar el contenido.</p>
+            <p>Un título puede contener más de un módulo, como <code>main</code>, <code>rtld</code> o módulos auxiliares con nombres del tipo <code>subsdk</code>. El nombre por sí solo no garantiza que dos archivos cumplan el mismo papel entre juegos o versiones. Identifica cada módulo por su ruta, su cabecera y el contexto del paquete que lo contiene.</p>
+
+            <div class="reader-callout info">
+                <span class="reader-callout-title">Un NSO no es el paquete completo del juego</span>
+                <p>El módulo es solo una parte del software instalado. Los recursos y otros archivos ejecutables pueden vivir en contenedores o particiones distintos. Inspecciona únicamente copias de archivos que tengas derecho a utilizar.</p>
+            </div>
+
+            <h2 id="cabecera">2. Mapa de la cabecera</h2>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Campos principales de la cabecera NSO</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Offset de cabecera</th>
+                            <th scope="col">Campo</th>
+                            <th scope="col">Descripción general</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr"><code>0x00</code></td>
+                            <td>Magic</td>
+                            <td>Firma <code>NSO0</code>.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x04</code></td>
+                            <td>Versión</td>
+                            <td>Campo de versión del formato.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x0C</code></td>
+                            <td>Flags</td>
+                            <td>Bits que describen opciones del módulo, incluidas condiciones de compresión.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x10</code></td>
+                            <td>Descriptor de <code>.text</code></td>
+                            <td>Información de ubicación, dirección de memoria y tamaño descomprimido.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x20</code></td>
+                            <td>Descriptor de <code>.rodata</code></td>
+                            <td>Información equivalente para datos de solo lectura.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x30</code></td>
+                            <td>Descriptor de <code>.data</code></td>
+                            <td>Información equivalente para datos modificables.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr"><code>0x40</code></td>
+                            <td>Build ID</td>
+                            <td>Identificador de 32 bytes asociado al módulo.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Los offsets de esta tabla son posiciones dentro de la cabecera, no offsets de los segmentos en el archivo. Cada descriptor reúne campos distintos; interpreta sus miembros según la especificación NSO y no como un único número grande. La cabecera también contiene otros metadatos, por lo que este resumen no sustituye un parser completo.</p>
+
+            <h2 id="segmentos">3. Segmentos y direcciones</h2>
+            <p>Los segmentos principales separan código, datos de solo lectura y datos que el programa puede modificar. Cada descriptor permite relacionar la representación almacenada en el archivo con la representación que utiliza el proceso al ejecutarse.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Conceptos que aparecen en los descriptores de segmento</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Concepto</th>
+                            <th scope="col">Pregunta</th>
+                            <th scope="col">No confundir con</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Offset de archivo</td>
+                            <td>¿Dónde están los bytes almacenados en el NSO?</td>
+                            <td>Una dirección virtual del proceso.</td>
+                        </tr>
+                        <tr>
+                            <td>Offset de memoria</td>
+                            <td>¿En qué posición relativa se mapea el segmento?</td>
+                            <td>Un offset del archivo completo.</td>
+                        </tr>
+                        <tr>
+                            <td>Tamaño descomprimido</td>
+                            <td>¿Cuántos bytes ocupa el segmento una vez preparado?</td>
+                            <td>La longitud comprimida que ocupa en el NSO.</td>
+                        </tr>
+                        <tr>
+                            <td>Tamaño comprimido</td>
+                            <td>¿Cuántos bytes se almacenaron si el segmento está comprimido?</td>
+                            <td>El tamaño lógico en memoria.</td>
+                        </tr>
+                        <tr>
+                            <td>BSS</td>
+                            <td>¿Qué espacio se reserva y se inicializa en memoria?</td>
+                            <td>Datos que necesariamente aparecen como bytes en el archivo.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Las direcciones de memoria del proceso no se convierten a offsets del archivo mediante una resta universal. Primero se identifica el módulo, el segmento y su dirección de mapeo; luego se comprueba que la dirección esté dentro del rango de ese segmento. El BSS merece atención especial porque puede reservar espacio que no ocupa una secuencia equivalente de bytes en el NSO.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>relacion_segmento.txt</span><span>ESQUEMA</span></div>
+                <pre><code>NSO (archivo)
+┌──────────────────────┐
+│ Cabecera             │
+│ Bytes almacenados    │
+│   .text              │
+│   .rodata            │
+│   .data              │
+└──────────────────────┘
+          │ carga / preparación
+          ▼
+Espacio de memoria del proceso
+┌──────────────────────┐
+│ .text                │ código
+│ .rodata              │ constantes
+│ .data                │ datos inicializados
+│ BSS                  │ espacio inicializado en memoria
+└──────────────────────┘</code></pre>
+            </div>
+
+            <h2 id="compresion">4. Compresión y datos almacenados</h2>
+            <p>Los segmentos NSO pueden almacenarse comprimidos. La cabecera indica condiciones que permiten al cargador o a las herramientas interpretar los bytes. Por eso, una búsqueda directa de instrucciones sobre el archivo comprimido puede no encontrar el patrón esperado.</p>
+
+            <ul>
+                <li><strong>Flags:</strong> describen propiedades del módulo y qué segmentos tienen una representación comprimida.</li>
+                <li><strong>Offset:</strong> señala dónde comienza la representación del segmento en el archivo NSO.</li>
+                <li><strong>Tamaño comprimido:</strong> describe el rango almacenado cuando aplica al formato.</li>
+                <li><strong>Tamaño lógico:</strong> permite comprobar la longitud tras la descompresión.</li>
+                <li><strong>Integridad:</strong> ciertos campos auxiliares pueden permitir validar el contenido descomprimido.</li>
+            </ul>
+
+            <p>LZ4 es una compresión frecuente en este contexto, pero no deduzcas el algoritmo solo porque los bytes parezcan comprimidos. Usa una herramienta que reconozca NSO y sus flags. Extraer bytes de un rango y pasarlos a un descompresor genérico sin conocer los límites puede producir errores o una salida engañosa.</p>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">No edites el segmento comprimido como si fuera código plano</span>
+                <p>Para inspeccionar instrucciones, trabaja con una copia descomprimida que conserve su relación con el módulo original. Si un flujo posterior requiere volver a crear el NSO, el segmento debe recomprimirse y los metadatos relacionados deben actualizarse correctamente.</p>
+            </div>
+
+            <h2 id="buildid">5. Por qué importa el Build ID</h2>
+
+            <p>El <strong>Build ID</strong> es un identificador de 32 bytes asociado a un módulo ejecutable concreto. Las herramientas de modificación lo usan para distinguir compilaciones y comprobar si un conjunto de cambios está destinado al módulo que se inspecciona.</p>
+            <p>Una actualización puede cambiar código, datos, disposición de segmentos o decisiones del compilador. Como consecuencia, una modificación basada en posiciones de una compilación anterior puede dejar de corresponder a las instrucciones o estructuras esperadas. El Build ID ayuda a detectar esa diferencia antes de aplicar cambios.</p>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Conexión con los parches</span>
+                <p>Como vimos en <a href="switch-03-parches-de-codigo.html">Parches de código</a>, ciertos flujos de parches asocian archivos con el Build ID del módulo que esperan modificar. La asociación identifica el destino; no demuestra por sí sola que el contenido del parche sea correcto o seguro.</p>
+            </div>
+
+            <h2 id="lectura-id">6. Leer y registrar el Build ID</h2>
+            <p>El Build ID se representa como 32 bytes. Una herramienta puede mostrarlo como una cadena hexadecimal continua, con separadores o en grupos. Conserva el valor tal como lo presenta el parser y registra el módulo del que procede: un identificador sin nombre de archivo no basta para una comparación reproducible.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>registro_build_id.txt</span><span>PLANTILLA</span></div>
+                <pre><code>Archivo del módulo: exefs/main
+Tipo detectado: NSO
+Build ID: 00112233445566778899AABBCCDDEEFF
+          00112233445566778899AABBCCDDEEFF
+          00112233445566778899AABBCCDDEEFF
+          00112233445566778899AABBCCDDEEFF
+Longitud: 32 bytes
+Herramienta y versión:
+Origen del archivo:
+Observaciones:</code></pre>
+            </div>
+
+            <p>La cadena ilustrativa anterior no identifica un juego real. No la copies como si fuera un valor válido. Al comparar dos IDs, comprueba los 32 bytes completos; una coincidencia parcial no garantiza que se trate de la misma compilación.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Registro mínimo para evitar confundir módulos</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Dato</th>
+                            <th scope="col">Ejemplo de anotación</th>
+                            <th scope="col">Motivo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Nombre o ruta</td>
+                            <td><code>exefs/main</code></td>
+                            <td>Un paquete puede incluir varios módulos.</td>
+                        </tr>
+                        <tr>
+                            <td>Formato</td>
+                            <td><code>NSO</code></td>
+                            <td>Evita tratar un contenedor o archivo distinto como ejecutable.</td>
+                        </tr>
+                        <tr>
+                            <td>Build ID completo</td>
+                            <td>32 bytes hexadecimales</td>
+                            <td>Permite comparar sin truncar información.</td>
+                        </tr>
+                        <tr>
+                            <td>Versión del título</td>
+                            <td>Versión reportada por la fuente legal del archivo.</td>
+                            <td>Da contexto, aunque no sustituye el ID del módulo.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="versiones">7. Versiones y módulos distintos</h2>
+            <p>El Build ID pertenece al módulo, no es un identificador universal de todo el título. Dos módulos de la misma instalación pueden tener IDs diferentes. Del mismo modo, la etiqueta visible de una versión del juego no siempre permite deducir todos los IDs de sus módulos.</p>
+
+            <ul>
+                <li>Compara el ID del mismo módulo con el ID esperado por la herramienta o el parche.</li>
+                <li>No asumas que <code>main</code> y un <code>subsdk</code> comparten el identificador.</li>
+                <li>Una actualización puede reemplazar uno o varios módulos, no necesariamente todos.</li>
+                <li>El nombre del archivo puede repetirse en distribuciones distintas; registra también el origen y la revisión.</li>
+            </ul>
+
+            <p>Si un paquete contiene varios ejecutables, crea un inventario con una fila por archivo. Esto evita aplicar accidentalmente a un módulo una referencia que solo era válida para otro.</p>
+
+            <h2 id="flujo">8. Flujo de inspección</h2>
+            <p>Una inspección ordenada comienza identificando el archivo y termina guardando un registro que permita repetir el análisis. No es necesario modificar el módulo para leer su cabecera y comprobar su Build ID.</p>
+
+            <ol>
+                <li><strong>Conserva el original:</strong> trabaja sobre una copia y anota tamaño y procedencia.</li>
+                <li><strong>Identifica el formato:</strong> comprueba que el archivo comienza con una firma NSO válida.</li>
+                <li><strong>Lee la cabecera:</strong> revisa versión, flags y descriptores de segmentos.</li>
+                <li><strong>Registra el Build ID:</strong> conserva los 32 bytes y el nombre del módulo.</li>
+                <li><strong>Valida segmentos:</strong> comprueba que offsets y tamaños no excedan el archivo.</li>
+                <li><strong>Descomprime solo si hace falta:</strong> usa un parser compatible con las flags y conserva la salida aparte.</li>
+                <li><strong>Compara con la referencia:</strong> confirma que el identificador esperado corresponda a ese módulo.</li>
+            </ol>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>inventario_nso.txt</span><span>EJEMPLO</span></div>
+                <pre><code>Archivo: main
+Firma: NSO0
+Versión de cabecera:
+Flags:
+Segmentos: .text / .rodata / .data
+Build ID: [registrar 32 bytes completos]
+Tamaños validados: sí / no
+Compresión detectada por parser:
+Observaciones:</code></pre>
+            </div>
+
+            <h2 id="parches">9. Compatibilidad de parches</h2>
+            <p>Un Build ID coincidente es una condición de selección, no una prueba completa de compatibilidad. Verifica además qué módulo espera el parche, qué método de aplicación utiliza y si sus offsets se expresan respecto al archivo almacenado o al segmento cargado.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Preguntas antes de usar un parche de módulo</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Pregunta</th>
+                            <th scope="col">Por qué importa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>¿Coincide el módulo objetivo?</td>
+                            <td>Un ID de otro ejecutable no describe el destino correcto.</td>
+                        </tr>
+                        <tr>
+                            <td>¿Coincide el Build ID completo?</td>
+                            <td>Un parche puede depender de una compilación exacta.</td>
+                        </tr>
+                        <tr>
+                            <td>¿Qué espacio de offsets usa?</td>
+                            <td>Offsets de archivo y offsets de memoria pueden ser distintos.</td>
+                        </tr>
+                        <tr>
+                            <td>¿La herramienta valida el destino?</td>
+                            <td>Reduce el riesgo de modificar bytes que no corresponden.</td>
+                        </tr>
+                        <tr>
+                            <td>¿Existe copia de respaldo y método de reversión?</td>
+                            <td>Permite recuperar el estado anterior si el resultado falla.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>No fuerces un parche ignorando un ID distinto ni renombres un archivo para que parezca compatible. Si el ID cambió, busca una versión del parche dirigida al módulo exacto o vuelve a analizar el módulo de forma independiente.</p>
+
+            <h2 id="diagnostico">10. Diagnóstico de problemas</h2>
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Problemas habituales al identificar un NSO</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Síntoma</th>
+                            <th scope="col">Causa posible</th>
+                            <th scope="col">Comprobación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>No aparece la firma <code>NSO0</code></td>
+                            <td>El archivo no es NSO, está envuelto en otro contenedor o el offset no es el inicio.</td>
+                            <td>Confirma el archivo y la herramienta de extracción.</td>
+                        </tr>
+                        <tr>
+                            <td>Los bytes del segmento no parecen código</td>
+                            <td>Segmento comprimido o lectura desde un offset incorrecto.</td>
+                            <td>Consulta flags y descriptores con un parser NSO.</td>
+                        </tr>
+                        <tr>
+                            <td>El Build ID no coincide con la referencia</td>
+                            <td>Revisión, región o módulo distinto.</td>
+                            <td>Compara ruta, origen y los 32 bytes completos.</td>
+                        </tr>
+                        <tr>
+                            <td>El offset indicado excede el archivo</td>
+                            <td>Cabecera inválida, formato mal interpretado o archivo truncado.</td>
+                            <td>Valida los límites antes de extraer rangos.</td>
+                        </tr>
+                        <tr>
+                            <td>El módulo funciona distinto tras modificarlo</td>
+                            <td>Metadatos o segmentos no se reconstruyeron correctamente.</td>
+                            <td>Vuelve a una copia limpia y verifica el proceso con herramientas compatibles.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="practica">11. Práctica y lista de comprobación</h2>
+            <p>Usa un archivo NSO que tengas derecho a inspeccionar y limita el ejercicio a leer metadatos:</p>
+            <ol>
+                <li>Comprueba si los primeros cuatro bytes corresponden a <code>NSO0</code>.</li>
+                <li>Anota los offsets de cabecera de los descriptores de <code>.text</code>, <code>.rodata</code> y <code>.data</code>.</li>
+                <li>Registra el Build ID completo y el nombre o ruta del módulo.</li>
+                <li>Confirma que los rangos descritos por la cabecera no excedan el tamaño del archivo.</li>
+                <li>Explica por qué el Build ID no identifica por sí solo toda la versión del título.</li>
+            </ol>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Antes de dar por válido el análisis</span>
+                <ul>
+                    <li>¿La firma y el tipo de archivo se confirmaron?</li>
+                    <li>¿Separé offsets de archivo y direcciones de memoria?</li>
+                    <li>¿Interpreté flags y tamaños con una herramienta compatible?</li>
+                    <li>¿Registré el Build ID completo junto al módulo correspondiente?</li>
+                    <li>¿Validé que los segmentos y sus tamaños caben en el archivo?</li>
+                    <li>¿Conservé intacta la copia original?</li>
+                </ul>
+            </div>
+
+            <footer class="reader-footer">
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="switch-03-parches-de-codigo.html">&lt;&lt; Parches de código</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="switch-05-buenas-practicas.html">Buenas prácticas &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // SWITCH/0x04_NSO // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Capa de administración: estructura de modales y paneles requerida dinámicamente por admin.js para inyección de eventos y control de estado -->
+
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la plataforma: deben cargarse secuencialmente para garantizar las dependencias de inicialización entre consola.js, main.js y la gestión de sesión en admin.js -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buenas prácticas de ROM Hacking | The Hex Library</title>
+    <meta name="description" content="Buenas prácticas para documentar, probar y revertir modificaciones de Nintendo Switch con copias de seguridad y respeto por los derechos de autor.">
+
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+
+    <!-- Fuentes externas: Fira Code y VT323 provistas por Google Fonts bajo licencia SIL Open Font License (OFL) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <!-- Atributos data-editable: vinculan los nodos de texto directamente con el módulo de edición frontend en admin.js -->
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>SWITCH/0x05_BUENAS_PRACTICAS</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>HAC &middot; Flujo de trabajo</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.1 &nbsp;//&nbsp; lectura ~12 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag switch">SWITCH</span>
+            <h1>Buenas prácticas de ROM Hacking</h1>
+            <p class="reader-lead">Un buen flujo de modificación no consiste en evitar cualquier error, sino en detectarlo pronto y poder volver a un estado conocido. Estas prácticas ayudan a proteger archivos y partidas, aislar problemas y documentar los cambios sin perder de vista la legalidad y la compatibilidad.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#copias">Copias de seguridad</a></li>
+                        <li><a href="#pequeno">Un cambio, una prueba</a></li>
+                        <li><a href="#respeto">Respeto y legalidad</a></li>
+                        <li><a href="#organizacion">Organizar el proyecto</a></li>
+                        <li><a href="#identificar">Identificar versiones y archivos</a></li>
+                        <li><a href="#cambios">Cambios pequeños y reversibles</a></li>
+                        <li><a href="#pruebas">Diseñar pruebas útiles</a></li>
+                        <li><a href="#guardados">Proteger partidas guardadas</a></li>
+                        <li><a href="#compatibilidad">Compatibilidad y actualizaciones</a></li>
+                        <li><a href="#seguridad">Seguridad de herramientas y archivos</a></li>
+                        <li><a href="#documentacion">Documentar el proceso</a></li>
+                        <li><a href="#restauracion">Recuperación y reversión</a></li>
+                        <li><a href="#diagnostico">Diagnosticar errores</a></li>
+                        <li><a href="#lista">Lista de comprobación final</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="copias">1. Copias de seguridad</h2>
+
+            <p>Antes de tocar nada, separa el material original, los archivos de trabajo y cualquier <strong>partida guardada</strong> que quieras proteger. Una copia de respaldo solo es útil si sabes qué contiene y puedes restaurarla.</p>
+            <ul>
+                <li>Conserva una copia intacta de los archivos de origen en una ubicación distinta a la carpeta de trabajo.</li>
+                <li>Respalda las partidas por separado antes de probar cambios que puedan modificar datos guardados.</li>
+                <li>No sobrescribas la única copia de un archivo para «probar rápido».</li>
+                <li>Comprueba que los respaldos existen y que sus tamaños son razonables.</li>
+                <li>Identifica claramente qué copia corresponde a cada juego, revisión y fecha.</li>
+            </ul>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Un respaldo que nunca se probó es una duda</span>
+                <p>Verifica que puedas abrir o copiar de vuelta los archivos respaldados antes de comenzar un cambio importante. Mantén la copia original fuera de la carpeta que editan tus herramientas.</p>
+            </div>
+
+            <h2 id="pequeno">2. Un cambio, una prueba</h2>
+            <p>Modifica una sola variable cada vez. Si cambias varios recursos o parámetros en una misma iteración, un fallo puede tener muchas causas y resulta más difícil aislarlo.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Método de trabajo</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Paso</th>
+                            <th scope="col">Acción</th>
+                            <th scope="col">Evidencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr">1</td>
+                            <td>Define un cambio concreto.</td>
+                            <td>Descripción breve del resultado esperado.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">2</td>
+                            <td>Guarda el estado anterior.</td>
+                            <td>Copia o parche reversible.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">3</td>
+                            <td>Aplica solo ese cambio.</td>
+                            <td>Archivo o recurso modificado.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">4</td>
+                            <td>Prueba el resultado en el contexto pertinente.</td>
+                            <td>Pasos y resultado observados.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">5</td>
+                            <td>Anota el offset o archivo afectado.</td>
+                            <td>Registro de la iteración.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">6</td>
+                            <td>Continúa solo después de validar.</td>
+                            <td>Estado conocido para comparar.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Si dos cambios fallan juntos, no sabrás cuál fue el culpable. Con una modificación aislada puedes comparar el antes y el después, revertirla si hace falta y continuar desde un estado reproducible.</p>
+
+            <h2 id="respeto">3. Respeto y legalidad</h2>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">Importante</span>
+                <p>Trabaja únicamente con archivos y copias que tengas derecho a utilizar, y respeta las leyes y condiciones aplicables en tu región. No compartas juegos, claves ni material protegido. Comparte documentación o parches que no incluyan contenido con derechos de autor y verifica las reglas aplicables antes de distribuirlos.</p>
+            </div>
+
+            <p>La autorización para modificar un archivo no implica automáticamente que se pueda distribuir el resultado. Si publicas un parche, procura que contenga solo las diferencias necesarias y que el usuario deba aplicar el parche a una copia obtenida legalmente. No incluyas archivos originales, datos extraídos, credenciales ni claves.</p>
+
+            <h2 id="organizacion">4. Organizar el proyecto</h2>
+            <p>Una estructura sencilla evita confundir la entrada original con una versión modificada. Separa archivos de origen, trabajo intermedio, salidas y notas; evita nombres ambiguos como <code>final_final2</code>.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>proyecto/</span><span>ORGANIZACIÓN</span></div>
+                <pre><code>proyecto/
+├── origen/
+│   └── archivos_sin_modificar/
+├── trabajo/
+│   ├── extraido/
+│   └── recursos_editables/
+├── salida/
+│   └── parche_prueba/
+└── notas/
+    ├── inventario.txt
+    └── pruebas.txt</code></pre>
+            </div>
+
+            <p>Adapta los nombres a tu herramienta y proyecto. Lo importante es que se pueda responder rápidamente qué archivo fue la entrada, cuál se editó y dónde quedó el resultado. No mezcles datos de distintas revisiones en el mismo directorio.</p>
+
+            <ul>
+                <li><strong>Origen:</strong> copias intactas y de uso autorizado.</li>
+                <li><strong>Trabajo:</strong> archivos extraídos y cambios en curso.</li>
+                <li><strong>Salida:</strong> parches o resultados temporales para probar.</li>
+                <li><strong>Notas:</strong> versiones, decisiones y resultados reproducibles.</li>
+            </ul>
+
+            <h2 id="identificar">5. Identificar versiones y archivos</h2>
+            <p>Antes de editar, confirma que los archivos pertenecen a la versión que esperas. Dos archivos con el mismo nombre pueden proceder de revisiones distintas; offsets, tamaños y estructuras pueden cambiar entre versiones.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Datos útiles para identificar un conjunto de trabajo</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Dato</th>
+                            <th scope="col">Qué registrar</th>
+                            <th scope="col">Para qué sirve</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Nombre del módulo o recurso</td>
+                            <td>Ruta y nombre exactos.</td>
+                            <td>Evitar mezclar componentes distintos.</td>
+                        </tr>
+                        <tr>
+                            <td>Versión o revisión</td>
+                            <td>Información disponible del título y actualización.</td>
+                            <td>Contextualizar diferencias entre archivos.</td>
+                        </tr>
+                        <tr>
+                            <td>Build ID</td>
+                            <td>Identificador completo del módulo NSO cuando aplique.</td>
+                            <td>Confirmar correspondencia con herramientas o parches.</td>
+                        </tr>
+                        <tr>
+                            <td>Tamaño y hash</td>
+                            <td>Valores calculados con una herramienta local.</td>
+                            <td>Reconocer copias idénticas o detectar cambios inesperados.</td>
+                        </tr>
+                        <tr>
+                            <td>Herramientas</td>
+                            <td>Nombre y versión del extractor, editor o reempaquetador.</td>
+                            <td>Repetir el flujo con condiciones conocidas.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>No publiques hashes o identificadores si no son necesarios para documentar un proyecto privado. Para un registro local, basta con anotar los datos que permiten reproducir y comparar tus propias copias.</p>
+
+            <h2 id="cambios">6. Cambios pequeños y reversibles</h2>
+            <p>Antes de editar, define el alcance del cambio y cómo volverás atrás. Un parche pequeño suele ser más fácil de revisar y probar que una colección de modificaciones acumuladas sin registro.</p>
+
+            <ol>
+                <li><strong>Formula el objetivo:</strong> describe qué comportamiento o recurso debería cambiar.</li>
+                <li><strong>Localiza la pieza:</strong> identifica el archivo, segmento o recurso implicado.</li>
+                <li><strong>Guarda el original:</strong> conserva una copia de los bytes o del archivo de partida.</li>
+                <li><strong>Aplica el cambio mínimo:</strong> no incluyas datos que no hagan falta para el objetivo.</li>
+                <li><strong>Revisa el diff:</strong> comprueba que las diferencias sean las esperadas.</li>
+                <li><strong>Prueba y registra:</strong> conserva el resultado y los pasos que lo validaron.</li>
+            </ol>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>registro_cambio.txt</span><span>PLANTILLA</span></div>
+                <pre><code>Objetivo:
+Archivo o recurso:
+Versión de origen:
+Cambio realizado:
+Estado anterior guardado en:
+Prueba efectuada:
+Resultado esperado:
+Resultado observado:
+Cómo revertir:</code></pre>
+            </div>
+
+            <p>Si una herramienta modifica automáticamente varios archivos, revisa la lista completa de salidas. No asumas que cada archivo regenerado era necesario: compara con una copia limpia y conserva la configuración usada.</p>
+
+            <h2 id="pruebas">7. Diseñar pruebas útiles</h2>
+            <p>Una prueba útil tiene un objetivo concreto y un resultado observable. «Abrí el juego» es insuficiente si el cambio afecta una escena que solo aparece más adelante. Especifica qué ruta vas a recorrer y qué condición indica éxito o fallo.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Una prueba reproducible</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Campo</th>
+                            <th scope="col">Ejemplo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Preparación</td>
+                            <td>Iniciar desde un estado guardado conocido.</td>
+                        </tr>
+                        <tr>
+                            <td>Acción</td>
+                            <td>Abrir la pantalla que utiliza el recurso editado.</td>
+                        </tr>
+                        <tr>
+                            <td>Resultado esperado</td>
+                            <td>El texto se muestra completo y la interfaz responde.</td>
+                        </tr>
+                        <tr>
+                            <td>Resultado observado</td>
+                            <td>Descripción breve, captura local o mensaje del emulador.</td>
+                        </tr>
+                        <tr>
+                            <td>Repetición</td>
+                            <td>Reiniciar y repetir para confirmar que no fue accidental.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Cuando sea posible, compara el resultado con una versión sin cambios bajo las mismas condiciones. No cambies simultáneamente la configuración del emulador, el estado del guardado y el archivo modificado; eso hace difícil atribuir la causa.</p>
+
+            <ul>
+                <li>Verifica tanto el camino exitoso como un caso límite razonable.</li>
+                <li>Incluye transiciones de escena y cargas posteriores si el recurso es dinámico.</li>
+                <li>Prueba después de cerrar y volver a abrir la aplicación.</li>
+                <li>Registra la versión del emulador y cualquier configuración relevante.</li>
+            </ul>
+
+            <h2 id="guardados">8. Proteger partidas guardadas</h2>
+            <p>Las partidas pueden cambiar al cargar el juego, incluso si solo querías probar un recurso. Antes de empezar, conserva una copia independiente y evita que una prueba destructiva se convierta en la única versión de tu progreso.</p>
+
+            <ol>
+                <li>Identifica dónde se guardan los datos en tu flujo de trabajo autorizado.</li>
+                <li>Haz una copia antes de ejecutar una versión modificada.</li>
+                <li>Etiqueta la copia con fecha o estado para no confundirla con la partida activa.</li>
+                <li>Prueba primero con una partida desechable si el cambio afecta guardado o progreso.</li>
+                <li>Después de probar, verifica cuál archivo de guardado está activo antes de restaurar.</li>
+            </ol>
+
+            <div class="reader-callout aviso">
+                <span class="reader-callout-title">No restaures una copia sobre otra a ciegas</span>
+                <p>Confirma el título, la versión y la ubicación del archivo de destino antes de restaurar. Un guardado de otra revisión o perfil puede no ser compatible y podría reemplazar datos que querías conservar.</p>
+            </div>
+
+            <h2 id="compatibilidad">9. Compatibilidad y actualizaciones</h2>
+            <p>Una modificación puede depender de una versión concreta del juego, módulo o recurso. Antes de actualizar, comprueba si el parche o los archivos modificados siguen siendo compatibles y conserva una copia del estado anterior.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Revisión previa a una actualización</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Elemento</th>
+                            <th scope="col">Pregunta de control</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Módulos</td>
+                            <td>¿Cambió el Build ID del ejecutable objetivo?</td>
+                        </tr>
+                        <tr>
+                            <td>Parche</td>
+                            <td>¿Indica explícitamente la versión o módulo compatible?</td>
+                        </tr>
+                        <tr>
+                            <td>Recursos</td>
+                            <td>¿La actualización reemplazó los archivos que modificaste?</td>
+                        </tr>
+                        <tr>
+                            <td>Guardados</td>
+                            <td>¿La nueva versión puede migrar el formato de la partida?</td>
+                        </tr>
+                        <tr>
+                            <td>Reversión</td>
+                            <td>¿Puedes volver a un estado consistente si la actualización falla?</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>No fuerces un parche cuyo identificador o versión no coincide con el módulo disponible. Un cambio de Build ID suele ser una señal para volver a verificar, no un obstáculo que convenga ignorar.</p>
+
+            <h2 id="seguridad">10. Seguridad de herramientas y archivos</h2>
+            <p>Trata los archivos descargados, scripts y proyectos de terceros como entradas no confiables. Usa herramientas de fuentes reconocidas, revisa qué archivos escriben y evita ejecutar código que no entiendas con permisos innecesarios.</p>
+
+            <ul>
+                <li>Descarga herramientas desde sus canales oficiales o repositorios conocidos.</li>
+                <li>Lee la documentación y verifica el nombre y la versión del ejecutable.</li>
+                <li>Evita conceder privilegios de administrador si la tarea no los requiere.</li>
+                <li>Ejecuta scripts en un directorio de prueba con copias de los archivos.</li>
+                <li>No introduzcas credenciales, claves privadas ni datos personales en herramientas desconocidas.</li>
+                <li>Revisa los archivos modificados después de cada ejecución automatizada.</li>
+            </ul>
+
+            <div class="reader-callout info">
+                <span class="reader-callout-title">Automatizar no elimina la revisión</span>
+                <p>Un script puede ahorrar pasos, pero también repetir un error en muchos archivos. Prueba primero con una copia pequeña, inspecciona el resultado y guarda los mensajes de error relevantes.</p>
+            </div>
+
+            <h2 id="documentacion">11. Documentar el proceso</h2>
+            <p>Una nota breve suele bastar para reconstruir una sesión semanas después. Registra el contexto, los cambios y las pruebas; no es necesario documentar cada clic si el comando o la ruta ya describen el paso con claridad.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>bitacora.txt</span><span>EJEMPLO</span></div>
+                <pre><code>Proyecto: prueba de interfaz
+Origen: revisión anotada en inventario local
+Herramienta: nombre y versión
+Archivo modificado: ruta relativa del recurso
+Cambio: ajuste de una cadena visible
+Prueba: abrir menú y recorrer opciones
+Resultado: texto completo; navegación correcta
+Pendiente: revisar en otra resolución</code></pre>
+            </div>
+
+            <p>La documentación compartida debe evitar incluir archivos de juego, claves o datos privados. Describe los pasos y requisitos, e incluye únicamente los parches o materiales cuya distribución esté permitida.</p>
+
+            <h2 id="restauracion">12. Recuperación y reversión</h2>
+            <p>Define el plan de vuelta atrás antes de probar. Una reversión clara puede ser restaurar un archivo, quitar un parche o volver a una copia de respaldo que ya comprobaste.</p>
+
+            <ol>
+                <li>Detén la prueba si aparecen fallos fuera del comportamiento esperado.</li>
+                <li>Conserva el registro y los archivos que produjeron el problema para diagnosticarlo.</li>
+                <li>Restaura solo el componente afectado desde una copia verificada.</li>
+                <li>Confirma que el estado restaurado corresponde a la misma versión y ubicación.</li>
+                <li>Repite una prueba básica para asegurarte de que regresaste al estado conocido.</li>
+            </ol>
+
+            <p>No elimines registros de error ni sobrescribas la salida fallida antes de entenderla. Si no puedes restaurar un estado consistente, vuelve a la copia intacta en vez de acumular cambios correctivos no documentados.</p>
+
+            <h2 id="diagnostico">13. Diagnosticar errores</h2>
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Primeras comprobaciones cuando algo falla</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Síntoma</th>
+                            <th scope="col">Posible causa</th>
+                            <th scope="col">Paso de diagnóstico</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>El cambio no aparece</td>
+                            <td>Se editó una copia que no se usó en la prueba.</td>
+                            <td>Confirma rutas, nombres y fecha de modificación.</td>
+                        </tr>
+                        <tr>
+                            <td>El juego falla al iniciar</td>
+                            <td>Parche incompatible o recurso mal formado.</td>
+                            <td>Vuelve a una copia limpia y reintroduce un cambio.</td>
+                        </tr>
+                        <tr>
+                            <td>La partida no carga</td>
+                            <td>Guardado incompatible o reemplazado.</td>
+                            <td>Verifica respaldo, título y versión antes de restaurar.</td>
+                        </tr>
+                        <tr>
+                            <td>Hay resultados distintos entre pruebas</td>
+                            <td>Condiciones de prueba o estado inicial variables.</td>
+                            <td>Fija versión, configuración y pasos de reproducción.</td>
+                        </tr>
+                        <tr>
+                            <td>La herramienta cambió más archivos</td>
+                            <td>Salida automatizada o configuración inesperada.</td>
+                            <td>Compara el inventario antes y después y revisa el log.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Empieza por la causa más simple: confirmar que estás probando el archivo correcto. Después revisa compatibilidad, formato del recurso y configuración. Cambiar varias cosas a la vez puede ocultar la causa original.</p>
+
+            <h2 id="lista">14. Lista de comprobación final</h2>
+            <p>Antes de dar por terminada una modificación, repasa estos puntos:</p>
+            <ul>
+                <li>El archivo de origen y la partida importante tienen copias verificadas.</li>
+                <li>La versión y el módulo objetivo están identificados.</li>
+                <li>Los archivos de trabajo están organizados y no mezclan revisiones distintas.</li>
+                <li>El cambio es pequeño, está documentado y puede revertirse.</li>
+                <li>La prueba tiene pasos reproducibles y cubre la función modificada.</li>
+                <li>Se registraron herramientas, versiones y resultados.</li>
+                <li>Los archivos de terceros se trataron como entradas no confiables.</li>
+                <li>La distribución respeta derechos, licencias y reglas aplicables.</li>
+            </ul>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">La regla que resume todas las demás</span>
+                <p>Trabaja sobre copias, cambia una cosa, prueba lo que cambiaste y anota cómo volver atrás. Si no puedes explicar qué cambió o restaurar el estado anterior, todavía no tienes un flujo de trabajo seguro.</p>
+            </div>
+
+            <footer class="reader-footer">
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="switch-04-ejecutables-nso-y-build-id.html">&lt;&lt; Ejecutables NSO</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="../index.html#catalogo">Catálogo &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // SWITCH/0x05_BUENAS_PRACTICAS // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Capa de administración: estructura de modales y paneles requerida dinámicamente por admin.js para inyección de eventos y control de estado -->
+
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la plataforma: deben cargarse secuencialmente para garantizar las dependencias de inicialización entre consola.js, main.js y la gestión de sesión en admin.js -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>

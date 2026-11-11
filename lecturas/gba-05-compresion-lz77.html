@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compresión LZ77 | The Hex Library</title>
+    <meta name="description" content="Guía práctica del formato LZ77 de GBA: cabecera, banderas, referencias, descompresión, validación y diagnóstico de bloques.">
+
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <link rel="stylesheet" href="../css/admin.css?v=3">
+    <link rel="stylesheet" href="../css/reader.css?v=1">
+    <link rel="stylesheet" href="../css/movil.css?v=1">
+
+    <!-- Fuentes externas: Fira Code y VT323 provistas por Google Fonts bajo licencia SIL Open Font License (OFL) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">
+            <span>The Hex</span> Library
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <!-- Atributos data-editable: vinculan los nodos de texto directamente con el módulo de edición frontend en admin.js -->
+                <li><a href="../index.html#catalogo" class="active" data-editable="nav.catalogo">Catálogo</a></li>
+                <li><a href="../index.html#asistente-ia" data-editable="nav.asistente">Asistente IA</a></li>
+                <li><a href="../index.html#contacto" data-editable="nav.contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="reader-page">
+        <article class="reader-container">
+
+            <header class="reader-filecard">
+                <dl>
+                    <dt>File_ID</dt>
+                    <dd><strong>GBA/0x05_LZ77</strong></dd>
+                    <dt>Status</dt>
+                    <dd><span class="reader-status">READ_ONLY</span></dd>
+                    <dt>Format</dt>
+                    <dd>.HTML / text-utf8</dd>
+                    <dt>Target</dt>
+                    <dd>AGB-001 &middot; BIOS</dd>
+                    <dt>Rev</dt>
+                    <dd>rev.1.1 &nbsp;//&nbsp; lectura ~12 min</dd>
+                </dl>
+            </header>
+
+            <span class="reader-tag gba">GBA</span>
+            <h1>Compresión LZ77</h1>
+            <p class="reader-lead">Los cartuchos tenían espacio limitado, así que muchos gráficos, mapas y otros recursos se guardan comprimidos. LZ77 aprovecha las repeticiones: en vez de escribir de nuevo una secuencia que ya apareció, almacena una referencia a los bytes anteriores. Esta lectura explica el formato usado por la BIOS de GBA y cómo inspeccionarlo sin perder de vista sus límites.</p>
+
+            <details class="reader-details reader-toc" open>
+                <summary>Índice del documento</summary>
+                <div class="reader-details-body">
+                    <ol>
+                        <li><a href="#cabecera">La cabecera de 4 bytes</a></li>
+                        <li><a href="#banderas">Banderas y referencias</a></li>
+                        <li><a href="#ejemplo">Un ejemplo paso a paso</a></li>
+                        <li><a href="#ventana">La ventana de búsqueda</a></li>
+                        <li><a href="#flujo">Flujo de descompresión</a></li>
+                        <li><a href="#pseudocodigo">Pseudocódigo del decodificador</a></li>
+                        <li><a href="#validacion">Validaciones y límites</a></li>
+                        <li><a href="#compresion">Compresión y tamaño</a></li>
+                        <li><a href="#identificacion">Cómo identificar bloques LZ77</a></li>
+                        <li><a href="#errores">Errores frecuentes</a></li>
+                        <li><a href="#flujo-trabajo">Flujo de trabajo recomendado</a></li>
+                        <li><a href="#practica">Práctica y lista de comprobación</a></li>
+                    </ol>
+                </div>
+            </details>
+
+            <h2 id="cabecera">1. La cabecera de 4 bytes</h2>
+
+            <p>Un bloque comprimido con el formato LZ77 de la BIOS empieza con una cabecera de cuatro bytes. El primer byte identifica el tipo de compresión; los tres siguientes almacenan el tamaño esperado de salida en orden little-endian. Ese tamaño corresponde a los datos ya descomprimidos, no al número de bytes que ocupa el bloque en la ROM.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Cabecera LZ77</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Byte</th>
+                            <th scope="col">Ejemplo</th>
+                            <th scope="col">Significado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr">0</td>
+                            <td><code>10</code></td>
+                            <td>Identificador del formato LZ77 de BIOS.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">1</td>
+                            <td><code>0C</code></td>
+                            <td>Byte menos significativo del tamaño descomprimido.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">2</td>
+                            <td><code>00</code></td>
+                            <td>Byte intermedio del tamaño descomprimido.</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">3</td>
+                            <td><code>00</code></td>
+                            <td>Byte más significativo del tamaño descomprimido.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>En el ejemplo, <code>0C 00 00</code> se interpreta como <code>0x00000C</code>, es decir, 12 bytes de salida. El tamaño ocupa 24 bits y se almacena como un entero, no como una dirección. En una herramienta de lectura, calcula el valor explícitamente para evitar invertir el orden de los bytes.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>leer_cabecera.txt</span><span>HEX</span></div>
+                <pre><code>10 0C 00 00
+│  └─────┘
+│   tamaño descomprimido: 0x00000C = 12 bytes
+└──── tipo de bloque: LZ77 BIOS</code></pre>
+            </div>
+
+            <div class="reader-callout info">
+                <span class="reader-callout-title">El tamaño no indica dónde termina el bloque comprimido</span>
+                <p>La cabecera informa cuántos bytes producir. No proporciona directamente el tamaño total comprimido. Para encontrar el siguiente recurso, hay que decodificar hasta alcanzar la salida esperada o conocer la longitud por otra estructura.</p>
+            </div>
+
+            <h2 id="banderas">2. Banderas y referencias</h2>
+
+            <p>Después de la cabecera, cada grupo comienza con un <strong>byte de banderas</strong> que describe hasta ocho elementos siguientes. Los bits se consumen del más significativo al menos significativo: bit 7, bit 6 y así sucesivamente hasta bit 0.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Interpretación de un grupo de banderas</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Bit</th>
+                            <th scope="col">Valor</th>
+                            <th scope="col">Elemento siguiente</th>
+                            <th scope="col">Bytes consumidos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr">7</td>
+                            <td><code>0</code></td>
+                            <td>Literal: copiar el byte tal cual.</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">6</td>
+                            <td><code>1</code></td>
+                            <td>Referencia a datos anteriores.</td>
+                            <td>2</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">5 a 0</td>
+                            <td>Se repite el mismo criterio</td>
+                            <td>Un bit describe cada elemento en orden.</td>
+                            <td>1 o 2 por elemento</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Un bit a <code>0</code> indica un <strong>literal</strong>, es decir, un byte que se copia directamente a la salida. Un bit a <code>1</code> indica una referencia de dos bytes. La referencia codifica longitud y distancia en una palabra de 16 bits, con el byte más significativo primero dentro del par.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>referencia_lz77.txt</span><span>FORMATO</span></div>
+                <pre><code>Primer byte:  LLLL DDDD
+Segundo byte: DDDD DDDD
+
+longitud  = L + 3
+distancia = D + 1
+
+L = nibble alto del primer byte
+D = 12 bits inferiores formados por el nibble bajo
+    del primer byte y el segundo byte</code></pre>
+            </div>
+
+            <p>La longitud representable por una referencia va de 3 a 18 bytes. La distancia representable va de 1 a 4096 bytes hacia atrás. La distancia se mide desde la posición actual de salida; no es un offset absoluto dentro de la ROM ni dentro del bloque comprimido.</p>
+
+            <h2 id="ejemplo">3. Un ejemplo real</h2>
+
+            <p>En el bloque siguiente, el primer byte de banderas es <code>0x10</code>, que en binario es <code>00010000</code>. Por lo tanto, los tres primeros elementos son literales y el cuarto es una referencia. Los bits restantes no se usan porque la salida ya alcanza los 12 bytes indicados por la cabecera.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>lz77.hex</span><span>HEX</span></div>
+                <pre><code>10 0C 00 00  <span class="cmt">// LZ77, 12 bytes de salida</span>
+10           <span class="cmt">// banderas 0001 0000: 3 literales y 1 referencia</span>
+41 42 43     <span class="cmt">// "ABC"</span>
+60 02        <span class="cmt">// copia 9 bytes desde 3 atrás</span>
+<span class="cmt">// resultado: ABCABCABCABC</span></code></pre>
+            </div>
+
+            <p>El par <code>60 02</code> representa la palabra <code>0x6002</code>. El nibble alto es <code>6</code>, así que la longitud es <code>6 + 3 = 9</code>. Los doce bits restantes valen <code>0x002</code>, por lo que la distancia es <code>2 + 1 = 3</code>.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Salida del ejemplo, byte a byte</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Paso</th>
+                            <th scope="col">Acción</th>
+                            <th scope="col">Salida acumulada</th>
+                            <th scope="col">Tamaño</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="addr">1</td>
+                            <td>Literal <code>41</code> = A</td>
+                            <td><code>A</code></td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">2</td>
+                            <td>Literal <code>42</code> = B</td>
+                            <td><code>AB</code></td>
+                            <td>2</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">3</td>
+                            <td>Literal <code>43</code> = C</td>
+                            <td><code>ABC</code></td>
+                            <td>3</td>
+                        </tr>
+                        <tr>
+                            <td class="addr">4 a 12</td>
+                            <td>Copiar longitud 9, distancia 3</td>
+                            <td><code>ABCABCABCABC</code></td>
+                            <td>12</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Dato curioso</span>
+                <p>La copia puede solaparse con lo que se está escribiendo. Después de emitir <code>ABC</code>, el decodificador copia desde tres bytes atrás. Los bytes recién producidos pasan a formar parte de la misma ventana, así que nueve bytes salen de solo tres literales.</p>
+            </div>
+
+            <h2 id="ventana">4. La ventana de búsqueda</h2>
+            <p>El decodificador mantiene como referencia los bytes que ya produjo. Una distancia de <code>1</code> repite el último byte; una distancia de <code>3</code> vuelve tres posiciones desde el final de la salida disponible. La referencia debe apuntar a una posición ya escrita.</p>
+            <p>En el ejemplo, al comienzo de la referencia la salida es <code>A B C</code>. La distancia <code>3</code> localiza la <code>A</code>. Cada byte se copia uno por uno y la salida se amplía durante la operación:</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>copia_solapada.txt</span><span>SECUENCIA</span></div>
+                <pre><code>Inicio:       A B C
+Copiar 1:     A B C A
+Copiar 2:     A B C A B
+Copiar 3:     A B C A B C
+Copiar 4:     A B C A B C A
+Copiar 5:     A B C A B C A B
+Copiar 6:     A B C A B C A B C
+Copiar 7:     A B C A B C A B C A
+Copiar 8:     A B C A B C A B C A B
+Copiar 9:     A B C A B C A B C A B C</code></pre>
+            </div>
+
+            <p>Una implementación que copie un bloque fijo de memoria de una sola vez puede fallar en referencias solapadas. La forma más clara de evitarlo es leer el byte desde <code>salida[len(salida) - distancia]</code> en cada iteración, añadirlo y volver a calcular la posición con la nueva longitud.</p>
+
+            <div class="reader-callout info">
+                <span class="reader-callout-title">Distancia y longitud son campos distintos</span>
+                <p>La distancia determina de dónde empieza la copia; la longitud determina cuántos bytes se generan. Una referencia puede copiar más bytes que su distancia, precisamente porque permite el solapamiento.</p>
+            </div>
+
+            <h2 id="flujo">5. Flujo de descompresión</h2>
+            <p>El proceso se organiza en grupos de hasta ocho elementos. Se lee un byte de banderas, se examina cada bit desde el más alto y se consume un literal o una referencia según corresponda. Se repite hasta alcanzar el tamaño descomprimido declarado en la cabecera.</p>
+
+            <ol>
+                <li><strong>Lee la cabecera:</strong> valida el tipo y obtiene el tamaño final.</li>
+                <li><strong>Lee banderas:</strong> carga un byte y comienza por el bit 7.</li>
+                <li><strong>Decodifica un elemento:</strong> bit cero significa literal; bit uno, referencia de dos bytes.</li>
+                <li><strong>Actualiza la salida:</strong> añade el byte o los bytes copiados.</li>
+                <li><strong>Comprueba el tamaño:</strong> detente al alcanzar la longitud esperada, incluso si quedan bits de banderas.</li>
+                <li><strong>Comprueba límites:</strong> no leas más allá de la entrada ni escribas más allá del tamaño anunciado.</li>
+            </ol>
+
+            <p>El último grupo puede tener menos de ocho elementos útiles. Los bits sobrantes de ese byte de banderas no implican que haya más recursos ni que deban consumirse. La condición de fin principal es haber generado exactamente la cantidad de bytes indicada por la cabecera.</p>
+
+            <h2 id="pseudocodigo">6. Pseudocódigo del decodificador</h2>
+            <p>El pseudocódigo muestra la lógica central. En una herramienta real, las operaciones de lectura deben comprobar que los bytes solicitados existen y devolver un error claro si el bloque está truncado.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>decodificador_lz77.txt</span><span>PSEUDOCÓDIGO</span></div>
+                <pre><code>leer y validar el byte de tipo 0x10
+tamaño = leer los siguientes 3 bytes como entero little-endian
+salida = secuencia vacía
+
+mientras longitud(salida) &lt; tamaño:
+    banderas = leer un byte
+
+    para bit desde 7 hasta 0:
+        si longitud(salida) == tamaño:
+            terminar
+
+        si el bit está apagado:
+            salida.agregar(leer un byte)
+        si no:
+            primero = leer un byte
+            segundo = leer un byte
+            longitud = (primero &gt;&gt; 4) + 3
+            distancia = (((primero &amp; 0x0F) &lt;&lt; 8) | segundo) + 1
+
+            repetir longitud veces:
+                salida.agregar(salida[longitud(salida) - distancia])</code></pre>
+            </div>
+
+            <p>En la parte final, la longitud de referencia podría llevar la salida más allá del tamaño anunciado si el bloque es inválido. Un decodificador seguro debe rechazar esa entrada o impedir que escriba más bytes de los permitidos, en vez de aceptar una salida silenciosamente distinta.</p>
+
+            <h2 id="validacion">7. Validaciones y límites</h2>
+            <p>Al analizar un bloque desconocido, comprueba los datos antes y durante la descompresión. Las validaciones evitan lecturas fuera de rango y ayudan a distinguir una cabecera real de una coincidencia accidental.</p>
+
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Comprobaciones mínimas para un decodificador</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Dato</th>
+                            <th scope="col">Validación</th>
+                            <th scope="col">Si falla</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Cabecera</td>
+                            <td>Hay al menos 4 bytes y el tipo es el esperado.</td>
+                            <td>Tratarlo como bloque desconocido o truncado.</td>
+                        </tr>
+                        <tr>
+                            <td>Tamaño de salida</td>
+                            <td>Está dentro de un límite razonable definido por la herramienta.</td>
+                            <td>Rechazar antes de reservar memoria excesiva.</td>
+                        </tr>
+                        <tr>
+                            <td>Datos de entrada</td>
+                            <td>Cada lectura de bandera, literal y referencia está dentro del archivo.</td>
+                            <td>Informar que el bloque está incompleto.</td>
+                        </tr>
+                        <tr>
+                            <td>Distancia</td>
+                            <td>No excede la cantidad de bytes ya producidos.</td>
+                            <td>La referencia es inválida para el historial disponible.</td>
+                        </tr>
+                        <tr>
+                            <td>Longitud</td>
+                            <td>La copia no produce más bytes que el tamaño declarado.</td>
+                            <td>Detener el análisis y señalar datos inconsistentes.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Un tamaño de salida muy grande puede ser legítimo en ciertos contextos, pero un explorador de ROM debe tener un límite configurable o un límite de seguridad documentado. La cabecera es parte de un archivo no confiable; no conviene reservar memoria ilimitada basándose solo en su valor.</p>
+
+            <h2 id="compresion">8. Compresión y tamaño</h2>
+            <p>LZ77 es especialmente útil cuando hay patrones repetidos. En imágenes con áreas uniformes, mapas con tiles repetidos o secuencias de datos similares, una referencia puede sustituir muchos bytes por dos. En datos aleatorios, la compresión puede ser pequeña o incluso aumentar el tamaño por las banderas y referencias.</p>
+
+            <ul>
+                <li><strong>Literal:</strong> un byte de entrada produce un byte de salida, además del costo amortizado de la bandera.</li>
+                <li><strong>Referencia:</strong> dos bytes de entrada producen entre 3 y 18 bytes de salida.</li>
+                <li><strong>Bandera:</strong> un byte describe hasta ocho elementos; si el grupo no se llena, algunos bits quedan sin usar.</li>
+                <li><strong>Cabecera:</strong> los cuatro bytes indican formato y tamaño descomprimido.</li>
+            </ul>
+
+            <p>El tamaño descomprimido no permite deducir exactamente el tamaño comprimido. El resultado depende del número de grupos, los literales, las referencias y los bits que quedan sin utilizar en el último grupo. Para localizar el final con precisión, decodifica el flujo y conserva un contador de bytes consumidos.</p>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>comparacion_tamano.txt</span><span>RESUMEN</span></div>
+                <pre><code>Datos sin comprimir:   12 bytes
+Cabecera LZ77:          4 bytes
+Bandera del ejemplo:   1 byte
+Literales:             3 bytes
+Referencia:            2 bytes
+Total de entrada:     10 bytes
+Salida generada:      12 bytes</code></pre>
+            </div>
+
+            <p>En este ejemplo pequeño se ahorran dos bytes respecto a los 12 bytes originales, sin contar almacenamiento adicional que pueda usar el formato contenedor del juego. En bloques reales, puede haber cabeceras externas, alineación o padding hasta una frontera de 4 bytes.</p>
+
+            <h2 id="identificacion">9. Cómo identificar bloques LZ77</h2>
+            <p>El byte <code>0x10</code> es una pista típica, no una confirmación absoluta. Puede aparecer en otro tipo de datos. Para validar una candidata, interpreta el tamaño, ejecuta una descompresión con límites y comprueba si el resultado tiene la estructura esperada para el recurso.</p>
+
+            <ol>
+                <li>Busca una posible cabecera <code>10 ?? ?? ??</code> en una zona donde esperas un recurso.</li>
+                <li>Decodifica los tres bytes siguientes como tamaño little-endian.</li>
+                <li>Valida que el tamaño sea razonable y compatible con el tipo de recurso.</li>
+                <li>Intenta descomprimir respetando límites de entrada, salida y distancia.</li>
+                <li>Inspecciona la salida con un visor adecuado: texto, mapa, gráfico o estructura.</li>
+                <li>Compara el resultado con una herramienta independiente cuando sea posible.</li>
+            </ol>
+
+            <p>Si la salida es un gráfico, un bloque LZ77 correctamente decodificado todavía puede verse irreconocible si se interpreta con el formato de color o el modo de tiles equivocado. La compresión solo reconstruye bytes; no describe por sí misma cómo esos bytes se convierten en píxeles o estructuras del juego.</p>
+
+            <h2 id="errores">10. Errores frecuentes</h2>
+            <div class="reader-table-wrap">
+                <table class="reader-table">
+                    <caption>Diagnóstico de problemas al leer LZ77</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Síntoma</th>
+                            <th scope="col">Causa posible</th>
+                            <th scope="col">Qué revisar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Salida con bytes extraños desde el inicio</td>
+                            <td>Offset incorrecto o cabecera que no es LZ77.</td>
+                            <td>Confirma el byte de tipo y el comienzo real del bloque.</td>
+                        </tr>
+                        <tr>
+                            <td>El decodificador se detiene antes de tiempo</td>
+                            <td>El bloque está truncado o las banderas se leen en orden inverso.</td>
+                            <td>Revisa límites y procesa los bits desde el 7 hasta el 0.</td>
+                        </tr>
+                        <tr>
+                            <td>La salida tiene tamaño equivocado</td>
+                            <td>La cabecera se interpretó con endian incorrecto.</td>
+                            <td>Combina los bytes 1, 2 y 3 en little-endian.</td>
+                        </tr>
+                        <tr>
+                            <td>Las referencias producen un error de historial</td>
+                            <td>La distancia es mayor que los bytes ya generados.</td>
+                            <td>Comprueba el orden de los dos bytes de referencia y el cálculo de +1.</td>
+                        </tr>
+                        <tr>
+                            <td>La salida se repite mal</td>
+                            <td>La copia se hizo como bloque no solapado.</td>
+                            <td>Copia byte a byte y actualiza la salida en cada paso.</td>
+                        </tr>
+                        <tr>
+                            <td>El gráfico sigue sin verse bien</td>
+                            <td>La descompresión es correcta, pero el formato visual es otro.</td>
+                            <td>Comprueba profundidad, paleta, tiles y dimensiones.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="flujo-trabajo">11. Flujo de trabajo recomendado</h2>
+            <p>Separa el análisis del bloque comprimido de la edición del recurso. Conserva los archivos intermedios y apunta cada transformación para poder volver al origen si el resultado cambia inesperadamente.</p>
+
+            <ol>
+                <li><strong>Guarda el original:</strong> trabaja sobre una copia de la ROM y registra su tamaño o hash.</li>
+                <li><strong>Localiza la referencia:</strong> usa una tabla de punteros u otra estructura confirmada para encontrar el inicio del bloque.</li>
+                <li><strong>Registra la cabecera:</strong> anota offset, tipo y tamaño descomprimido.</li>
+                <li><strong>Extrae y descomprime:</strong> conserva el bloque original y la salida en archivos separados.</li>
+                <li><strong>Inspecciona los bytes:</strong> abre la salida con una herramienta acorde al tipo de recurso.</li>
+                <li><strong>Modifica y recompresa:</strong> utiliza el formato que espera el juego y conserva el tamaño o metadatos cuando sea necesario.</li>
+                <li><strong>Actualiza referencias si hace falta:</strong> una salida comprimida más larga puede requerir reubicación.</li>
+                <li><strong>Prueba el resultado:</strong> verifica el recurso en emulador y revisa también los usos relacionados.</li>
+            </ol>
+
+            <div class="reader-code">
+                <div class="reader-code-bar"><span>registro_recurso.txt</span><span>PLANTILLA</span></div>
+                <pre><code>Archivo ROM:
+Offset del bloque:
+Tipo de compresión:
+Tamaño descomprimido:
+Bytes comprimidos consumidos:
+Tipo de recurso:
+Herramienta de extracción:
+Herramienta de recompresión:
+Offset nuevo (si se reubica):
+Pruebas realizadas:</code></pre>
+            </div>
+
+            <div class="reader-callout info">
+                <span class="reader-callout-title">No todas las compresiones son iguales</span>
+                <p>La GBA y sus juegos también emplean variantes y formatos propios. Que una herramienta llame a un archivo «LZ77» no garantiza que acepte todas las convenciones del juego. Comprueba el byte de tipo, las particularidades del motor y cómo se carga el recurso.</p>
+            </div>
+
+            <h2 id="practica">12. Práctica y lista de comprobación</h2>
+            <p>Practica con el ejemplo de esta página antes de analizar un recurso real:</p>
+            <ol>
+                <li>Convierte <code>0C 00 00</code> a tamaño decimal.</li>
+                <li>Escribe <code>0x10</code> en binario e indica qué tres primeros elementos controla.</li>
+                <li>Decodifica <code>60 02</code> y calcula longitud y distancia con las fórmulas.</li>
+                <li>Explica por qué una referencia de distancia 3 puede generar 9 bytes.</li>
+                <li>Describe qué debe hacer un lector si el tamaño de cabecera supera el límite de salida permitido.</li>
+            </ol>
+
+            <div class="reader-callout dato">
+                <span class="reader-callout-title">Lista de comprobación</span>
+                <ul>
+                    <li>¿La cabecera tiene cuatro bytes y el identificador de tipo esperado?</li>
+                    <li>¿El tamaño de salida se leyó como entero little-endian de 24 bits?</li>
+                    <li>¿Las banderas se recorren desde el bit más significativo?</li>
+                    <li>¿Se validan los límites antes de cada lectura y escritura?</li>
+                    <li>¿Las referencias permiten solapamiento y verifican la distancia?</li>
+                    <li>¿La salida alcanza exactamente el tamaño declarado?</li>
+                    <li>¿Se distingue la descompresión de la interpretación del recurso?</li>
+                </ul>
+            </div>
+
+            <footer class="reader-footer">
+                <nav class="reader-nav" aria-label="Navegación entre documentos">
+                    <a href="gba-04-tablas-de-punteros.html">&lt;&lt; Tablas de punteros</a>
+                    <a href="../index.html#catalogo" class="volver">Volver al catálogo</a>
+                    <a href="nds-01-cabecera-y-sistema-de-archivos.html">Sistema de archivos NDS &gt;&gt;</a>
+                </nav>
+
+                <p class="reader-firma">EOF // GBA/0x05_LZ77 // THE HEX LIBRARY </p>
+            </footer>
+
+        </article>
+    </main>
+
+    <footer class="main-footer">
+        <p data-editable="footer.texto">&copy; 2026 The Hex Library. Estado: Sistema Operativo Estable.</p>
+        <button type="button" id="adm-trigger" class="adm-trigger">[ LOG-IN_ADMINISTRADOR ]</button>
+    </footer>
+
+    <!-- Capa de administración: estructura de modales y paneles requerida dinámicamente por admin.js para inyección de eventos y control de estado -->
+
+    <div id="adm-login" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-login-titulo" hidden>
+        <div class="adm-modal">
+            <h2 id="adm-login-titulo">&gt;_ ACCESO_RESTRINGIDO</h2>
+            <p class="adm-hint">Autenticación requerida para el módulo de administración.</p>
+
+            <form id="adm-login-form" class="contact-form" novalidate>
+                <div class="form-group">
+                    <label for="adm-usuario">ID_ADMINISTRADOR:</label>
+                    <input type="text" id="adm-usuario" name="adm-usuario" autocomplete="username" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="adm-password">CLAVE_DE_ACCESO:</label>
+                    <input type="password" id="adm-password" name="adm-password" autocomplete="current-password" maxlength="128" required>
+                </div>
+
+                <div class="adm-head-actions">
+                    <button type="submit" id="adm-login-submit" class="adm-btn exito">AUTENTICAR</button>
+                    <button type="button" id="adm-login-cancelar" class="adm-btn">CANCELAR</button>
+                </div>
+
+                <p id="adm-login-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="adm-panel" class="adm-overlay" role="dialog" aria-modal="true" aria-labelledby="adm-panel-titulo" hidden>
+        <div class="adm-panel">
+
+            <div class="adm-panel-head">
+                <div>
+                    <h2 id="adm-panel-titulo">&gt;_ MODO_DEVELOPER</h2>
+                    <span id="adm-usuario-etiqueta" class="adm-user"></span>
+                </div>
+                <div class="adm-head-actions">
+                    <button type="button" id="adm-logout" class="adm-btn peligro">CERRAR_SESION</button>
+                    <button type="button" id="adm-cerrar" class="adm-btn">MINIMIZAR</button>
+                </div>
+            </div>
+
+            <div class="adm-tabs" role="tablist">
+                <button type="button" class="tab-btn active" data-vista="transmisiones" role="tab" aria-selected="true">VISOR_TRANSMISIONES</button>
+                <button type="button" class="tab-btn" data-vista="consola" role="tab" aria-selected="false">MONITOR_CONSOLA</button>
+                <button type="button" class="tab-btn" data-vista="editor" role="tab" aria-selected="false">EDITOR_FRONTEND</button>
+            </div>
+
+            <div class="adm-body">
+
+                <section class="adm-view" data-vista="transmisiones" role="tabpanel">
+                    <div class="adm-consola-barra">
+                        <span id="adm-tr-contador" class="adm-user" data-total="0">0 transmisión(es) en registro</span>
+                        <button type="button" id="adm-tr-recargar" class="adm-btn">RECARGAR</button>
+                        <button type="button" id="adm-tr-purgar" class="adm-btn peligro">PURGAR_REGISTRO</button>
+                    </div>
+                    <div id="adm-tr-lista" class="adm-lista"></div>
+                    <p id="adm-tr-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                </section>
+
+                <section class="adm-view" data-vista="consola" role="tabpanel" hidden>
+                    <div class="adm-consola-barra">
+                        <button type="button" id="adm-consola-limpiar" class="adm-btn">LIMPIAR_BUFFER</button>
+                        <button type="button" id="adm-consola-prueba" class="adm-btn">EMITIR_PRUEBA</button>
+                        <label class="adm-check" for="adm-consola-auto">
+                            <input type="checkbox" id="adm-consola-auto" checked> Auto-scroll
+                        </label>
+                    </div>
+                    <div id="adm-consola-salida" class="adm-consola" role="log" aria-live="off"></div>
+                </section>
+
+                <section class="adm-view" data-vista="editor" role="tabpanel" hidden>
+                    <p class="adm-editor-aviso">
+                        Solo se editan textos descriptivos. Los campos del formulario, sus
+                        atributos name/id, los valores de las categorías y los identificadores
+                        internos quedan fuera del alcance del editor: el servidor rechaza
+                        cualquier clave ajena a la lista blanca.
+                    </p>
+                    <div id="adm-editor-campos"></div>
+                    <div class="adm-barra-fija">
+                        <button type="button" id="adm-editor-guardar" class="adm-btn exito">GUARDAR_PERMANENTE</button>
+                        <button type="button" id="adm-editor-restaurar" class="adm-btn peligro">RESTAURAR_ORIGINALES</button>
+                        <p id="adm-editor-status" class="adm-status" role="status" aria-live="polite" hidden></p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la plataforma: deben cargarse secuencialmente para garantizar las dependencias de inicialización entre consola.js, main.js y la gestión de sesión en admin.js -->
+    <script src="../js/consola.js?v=3"></script>
+    <script src="../js/main.js?v=3"></script>
+    <script src="../js/admin.js?v=3"></script>
+</body>
+</html>
