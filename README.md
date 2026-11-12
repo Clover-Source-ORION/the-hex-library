@@ -26,8 +26,11 @@ npm install
 npm start
 ```
 
-Abre `http://localhost:3000`. El backend sirve el frontend y la API en el mismo
-origen, así que no hay que levantar un segundo servidor ni configurar CORS.
+Abre `http://localhost:3000`. La arquitectura principal utiliza un enfoque **same-origin**.
+el backend sirve tanto el frontend como la API desde el mismo origen, por lo que no es 
+necesario levantar un segundo servidor ni configurar CORS para el funcionamiento habitual.
+No obstante, el proyecto también incluye soporte configurable para escenarios 
+**cross-origin**, como cuando el frontend y el backend se alojan en dominios distintos.
 
 ## Configurar el asistente de IA
 
@@ -79,20 +82,24 @@ falta, el sitio arranca igual — el catálogo, los filtros y el formulario de
 contacto funcionan con normalidad — y solo la ruta `/api/asistente` responde
 `503` con un mensaje explicativo.
 
-Variables opcionales (todas documentadas en `.env.example`):
+Variables opcionales (todas documentadas en `.env.example`, excepto la clave obligatoria):
 
 | Variable | Por defecto | Descripción |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | — | Clave de Google AI Studio (obligatoria) |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Modelo a consultar |
-| `GEMINI_TIMEOUT_MS` | `30000` | Espera máxima de la respuesta del modelo |
-| `GEMINI_MAX_TOKENS` | `2048` | Tope de tokens de salida |
-| `IA_RATE_LIMIT_WINDOW_MS` | `300000` | Ventana del límite de consultas |
-| `IA_RATE_LIMIT_MAX` | `15` | Consultas por IP dentro de la ventana |
-| `ALLOW_IA_CONFIG` | `true` | Permite el alta de la clave desde el sitio |
-| `IA_CONFIG_WINDOW_MS` | `900000` | Ventana del límite de intentos de alta |
-| `IA_CONFIG_MAX` | `10` | Intentos de alta por IP dentro de la ventana |
-| `ENV_FILE_PATH` | `backend/.env` | Ruta del `.env` que se escribe (útil en pruebas) |
+| `GEMINI_TIMEOUT_MS` | `30000` | Tiempo máximo de espera de la respuesta del modelo |
+| `GEMINI_MAX_TOKENS` | `2048` | Límite máximo de tokens de salida |
+| `IA_RATE_LIMIT_WINDOW_MS` | `300000` | Ventana de tiempo del límite de consultas |
+| `IA_RATE_LIMIT_MAX` | `15` | Número máximo de consultas por IP dentro de la ventana |
+| `ALLOW_IA_CONFIG` | `true` | Permite configurar la clave de IA desde el sitio |
+| `IA_CONFIG_WINDOW_MS` | `900000` | Ventana de tiempo del límite de intentos de configuración |
+| `IA_CONFIG_MAX` | `10` | Número máximo de intentos de configuración por IP dentro de la ventana |
+| `ENV_FILE_PATH` | `backend/.env` | Ruta del archivo `.env` que se escribe (útil en pruebas) |
+
+**Selección del modelo:** el servicio de IA utiliza un mecanismo de auto-descubrimiento que consulta 
+los modelos disponibles en la API de Gemini, identifica aquellos compatibles con `generateContent` y 
+prioriza los modelos Flash. Los resultados se almacenan temporalmente en caché durante 10 minutos para
+evitar consultas repetidas.
 
 ## Modo desarrollo
 
@@ -442,7 +449,7 @@ Tres módulos:
 
 La contraseña se deriva con `scrypt` al arrancar y se compara con
 `timingSafeEqual`; nunca se guarda ni se compara en claro. La sesión es un token
-firmado con HMAC-SHA256 que viaja en una cookie `httpOnly` + `SameSite=Strict`:
+firmado con HMAC-SHA256 que viaja en una cookie `httpOnly` + `SameSite=Lax` (en desarrollo) o `SameSite=None; Secure` (en producción):
 el JavaScript de la página no puede leerla, así que un XSS no puede robar la
 sesión. El login tiene freno de fuerza bruta (8 intentos por IP cada 15 min).
 
