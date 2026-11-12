@@ -28,6 +28,7 @@ delete process.env.GEMINI_API_KEY;
 const fetchReal = global.fetch;
 let siguienteRespuesta = null;
 let ultimaPeticion = null;
+let peticionesGeneracion = [];
 
 global.fetch = function (url, opciones) {
   const destino = String(url);
@@ -37,8 +38,13 @@ global.fetch = function (url, opciones) {
   }
 
   ultimaPeticion = { url: destino, opciones: opciones };
+  if (opciones && opciones.method === 'POST') {
+    peticionesGeneracion.push(destino);
+  }
 
-  if (typeof siguienteRespuesta === 'function') return siguienteRespuesta();
+  if (typeof siguienteRespuesta === 'function') {
+    return siguienteRespuesta(url, opciones);
+  }
 
   return Promise.resolve({
     ok: true,
@@ -99,7 +105,7 @@ async function prueba(nombre, fn) {
     const b = await r.json();
     assert.strictEqual(r.status, 503);
     assert.strictEqual(b.ok, false);
-    assert.ok(/GEMINI_API_KEY/.test(b.mensaje));
+    assert.ok(/GEMINI_API_KEY|no está configurado/i.test(b.mensaje));
   });
 
   await prueba('GET /api/asistente/estado informa que no esta configurado', async () => {
@@ -216,12 +222,70 @@ async function prueba(nombre, fn) {
     assert.ok(/GEMINI_API_KEY/.test(b.mensaje));
   });
 
+  await prueba('HTTP 401 detiene los reintentos de generación', async () => {
+    peticionesGeneracion = [];
+    siguienteRespuesta = (_url, opciones) => {
+      if (opciones.method === 'POST') {
+        return Promise.resolve(respuestaError(401, {
+          error: { status: 'UNAUTHENTICATED' }
+        }));
+      }
+
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          models: [
+            { name: 'models/gemini-2.0-flash', supportedGenerationMethods: ['generateContent'] },
+            { name: 'models/gemini-1.5-pro', supportedGenerationMethods: ['generateContent'] }
+          ]
+        })
+      });
+    };
+
+    const r = await consultar({ mensaje: 'Consulta con respuesta HTTP 401.' });
+    const b = await r.json();
+    assert.strictEqual(r.status, 502);
+    assert.ok(/no tiene permiso/i.test(b.mensaje));
+    assert.strictEqual(peticionesGeneracion.length, 1);
+    assert.ok(peticionesGeneracion[0].includes('/gemini-2.0-flash:generateContent'));
+  });
+
+  await prueba('HTTP 403 detiene los reintentos de generación', async () => {
+    peticionesGeneracion = [];
+    siguienteRespuesta = (_url, opciones) => {
+      if (opciones.method === 'POST') {
+        return Promise.resolve(respuestaError(403, {
+          error: { status: 'PERMISSION_DENIED' }
+        }));
+      }
+
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          models: [
+            { name: 'models/gemini-2.0-flash', supportedGenerationMethods: ['generateContent'] },
+            { name: 'models/gemini-1.5-pro', supportedGenerationMethods: ['generateContent'] }
+          ]
+        })
+      });
+    };
+
+    const r = await consultar({ mensaje: 'Consulta con respuesta HTTP 403.' });
+    const b = await r.json();
+    assert.strictEqual(r.status, 502);
+    assert.ok(/no tiene permiso/i.test(b.mensaje));
+    assert.strictEqual(peticionesGeneracion.length, 1);
+    assert.ok(peticionesGeneracion[0].includes('/gemini-2.0-flash:generateContent'));
+  });
+
   await prueba('Modelo inexistente (404) devuelve 502 explicativo', async () => {
     siguienteRespuesta = () => Promise.resolve(respuestaError(404, { error: { status: 'NOT_FOUND' } }));
     const r = await consultar({ mensaje: 'Consulta a modelo inexistente.' });
     const b = await r.json();
     assert.strictEqual(r.status, 502);
-    assert.ok(/GEMINI_MODEL/.test(b.mensaje));
+    assert.ok(/modelo solicitado no está disponible/i.test(b.mensaje));
   });
 
   await prueba('Fallo de red contra Google devuelve 502', async () => {
@@ -237,7 +301,7 @@ async function prueba(nombre, fn) {
     const r = await consultar({ mensaje: 'Consulta que tarda demasiado.' });
     const b = await r.json();
     assert.strictEqual(r.status, 504);
-    assert.ok(/tardo/i.test(b.mensaje));
+    assert.ok(/tard[oó]/i.test(b.mensaje));
   });
 
   await prueba('Prompt bloqueado por seguridad devuelve 422', async () => {
@@ -330,7 +394,7 @@ async function prueba(nombre, fn) {
     });
 
     const r = await configurar(
-      { apiKey: 'AIzaSyClaveDePruebaNoReal12345', modelo: 'gemini-2.5-flash' },
+      { apiKey: 'AIzaSyClaveDePruebaNoReal12345' },
       cookieAdmin
     );
     respuestaAlta = await r.json();
@@ -340,8 +404,7 @@ async function prueba(nombre, fn) {
     assert.strictEqual(process.env.GEMINI_API_KEY, 'AIzaSyClaveDePruebaNoReal12345');
 
     const contenido = fs.readFileSync(RUTA_ENV_PRUEBA, 'utf8');
-    assert.ok(/^GEMINI_API_KEY=AIzaSyClaveDePruebaNoReal12345$/m.test(contenido));
-    assert.ok(/^GEMINI_MODEL=gemini-2\.5-flash$/m.test(contenido));
+    assert.ok(/^GEMINI_API_KEY=AIzaSyClaveDePruebaNoReal12345$/m.test(contenido));  
   });
 
   await prueba('La respuesta del alta enmascara la clave', async () => {

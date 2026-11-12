@@ -19,6 +19,7 @@ let cacheModelos = {
   lista: [],
   timestamp: 0
 };
+
 const TTL_CACHE_MS = 10 * 60 * 1000; // 10 minutos
 
 // Contexto e instrucciones del sistema para definir el rol técnico de Byte
@@ -62,11 +63,23 @@ const INSTRUCCION_SISTEMA = [
 class AsistenteError extends Error {
   constructor(mensaje, status, opciones = {}) {
     super(mensaje);
+
     this.name = 'AsistenteError';
     this.status = status;
     this.expuesto = true;
-    if (opciones.retryAfter) this.retryAfter = opciones.retryAfter;
-    if (opciones.causa) this.causa = opciones.causa;
+
+    if (opciones.retryAfter) {
+      this.retryAfter = opciones.retryAfter;
+    }
+
+    if (opciones.causa) {
+      this.causa = opciones.causa;
+    }
+
+    // Indica que no se debe probar otro modelo ante este error.
+    if (opciones.noReintentar) {
+      this.noReintentar = true;
+    }
   }
 }
 
@@ -87,69 +100,135 @@ function estaConfigurado() {
 }
 
 function enmascararClave(clave) {
-  const limpia = String(clave || '').replace(/['"\r\n\t]/g, '').trim();
+  const limpia = String(clave || '')
+    .replace(/['"\r\n\t]/g, '')
+    .trim();
+
   if (!limpia) return '';
   if (limpia.length <= 8) return '********';
+
   return limpia.slice(0, 4) + '********' + limpia.slice(-4);
 }
 
 /**
- * Normaliza y construye la URL hacia la API de Gemini
+ * Normaliza y construye la URL hacia la API de Gemini.
+ * La API Key nunca se incorpora a la URL.
  */
-function construirUrlModelo(nombreModelo, accion = '', apiKey = '') {
-  const modeloLimpio = String(nombreModelo || '').replace(/^models\//, '').trim();
+function construirUrlModelo(nombreModelo, accion = '') {
+  const modeloLimpio = String(nombreModelo || '')
+    .replace(/^models\//, '')
+    .trim();
+
   const sufijoAccion = accion ? `:${accion}` : '';
-  const queryParam = apiKey ? `?key=${encodeURIComponent(apiKey)}` : '';
-  
-  return `${ENDPOINT_BASE}/${encodeURIComponent(modeloLimpio)}${sufijoAccion}${queryParam}`;
+
+  return `${ENDPOINT_BASE}/${encodeURIComponent(modeloLimpio)}${sufijoAccion}`;
 }
 
 /**
- * Consulta a Google los modelos disponibles y los filtra para el asistente de texto/código.
+ * Consulta a Google los modelos disponibles y los filtra para el asistente
+ * de texto/código.
  */
 async function obtenerModelosDisponibles(apiKey) {
   const ahora = Date.now();
-  if (cacheModelos.lista.length > 0 && (ahora - cacheModelos.timestamp) < TTL_CACHE_MS) {
+
+  if (
+    cacheModelos.lista.length > 0 &&
+    (ahora - cacheModelos.timestamp) < TTL_CACHE_MS
+  ) {
     return cacheModelos.lista;
   }
 
   const clave = apiKey || leerApiKey();
-  if (!clave) return MODELOS_POR_DEFECTO;
+
+  if (!clave) {
+    return MODELOS_POR_DEFECTO;
+  }
 
   // Patrones de modelos especializados que NO son para chat/texto estándar
-  const EXCLUIR_ESPECIALIZADOS = /tts|transcribe|lyria|clip|image|robotics|computer-use|antigravity|deep-research|banana/i;
+  const EXCLUIR_ESPECIALIZADOS =
+    /tts|transcribe|lyria|clip|image|robotics|computer-use|antigravity|deep-research|banana/i;
 
   try {
-    const url = `${ENDPOINT_BASE}?key=${encodeURIComponent(clave)}`;
-    const respuesta = await fetch(url, { method: 'GET' });
+    // La API Key se envía mediante el encabezado HTTP, no en la URL.
+    const respuesta = await fetch(ENDPOINT_BASE, {
+      method: 'GET',
+      headers: {
+        'x-goog-api-key': clave
+      }
+    });
 
     if (!respuesta.ok) {
-      console.warn(`[Byte IA] No se pudo auto-descubrir modelos (HTTP ${respuesta.status}). Usando lista por defecto.`);
+      const datos = await respuesta.json().catch(() => ({}));
+      const error = traducirErrorHttp(respuesta.status, datos);
+
+      // Una credencial rechazada no se soluciona probando otros modelos.
+      if (error.noReintentar) {
+        throw error;
+      }
+
+      console.warn(
+        `[Byte IA] No se pudo auto-descubrir modelos (HTTP ${respuesta.status}). Usando lista por defecto.`
+      );
+
       return MODELOS_POR_DEFECTO;
     }
 
     const datos = await respuesta.json();
+
     if (Array.isArray(datos.models)) {
       const disponibles = datos.models
-        .filter((m) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+        .filter((m) =>
+          Array.isArray(m.supportedGenerationMethods) &&
+          m.supportedGenerationMethods.includes('generateContent')
+        )
         .map((m) => m.name.replace(/^models\//, ''))
         .filter((nombre) => !EXCLUIR_ESPECIALIZADOS.test(nombre));
 
       if (disponibles.length > 0) {
-        // Ordena priorizando modelos estables Flash y Pro
+        // Ordena priorizando modelos estables Flash y Pro.
         disponibles.sort((a, b) => {
-          const prefA = a.includes('flash-latest') ? 0 : a.includes('2.0-flash') ? 1 : a.includes('flash') ? 2 : 3;
-          const prefB = b.includes('flash-latest') ? 0 : b.includes('2.0-flash') ? 1 : b.includes('flash') ? 2 : 3;
+          const prefA = a.includes('flash-latest')
+            ? 0
+            : a.includes('2.0-flash')
+              ? 1
+              : a.includes('flash')
+                ? 2
+                : 3;
+
+          const prefB = b.includes('flash-latest')
+            ? 0
+            : b.includes('2.0-flash')
+              ? 1
+              : b.includes('flash')
+                ? 2
+                : 3;
+
           return prefA - prefB;
         });
 
-        cacheModelos = { lista: disponibles, timestamp: ahora };
-        console.log(`[Byte IA] Modelos de texto/código filtrados para el asistente:`, disponibles);
+        cacheModelos = {
+          lista: disponibles,
+          timestamp: ahora
+        };
+
+        console.log(
+          '[Byte IA] Modelos de texto/código filtrados para el asistente:',
+          disponibles
+        );
+
         return disponibles;
       }
     }
   } catch (error) {
-    console.warn(`[Byte IA] Error consultando modelos de la API: ${error.message}`);
+    // Los errores de autenticación deben propagarse, no convertirse
+    // silenciosamente en una lista de modelos por defecto.
+    if (error instanceof AsistenteError && error.noReintentar) {
+      throw error;
+    }
+
+    console.warn(
+      `[Byte IA] Error consultando modelos de la API: ${error.message}`
+    );
   }
 
   return MODELOS_POR_DEFECTO;
@@ -159,37 +238,66 @@ function leerModelo() {
   return cacheModelos.lista[0] || MODELOS_POR_DEFECTO[0];
 }
 
+/**
+ * Verifica una credencial mediante una consulta GET a un modelo.
+ */
 async function verificarCredencial(apiKey, modeloPedido) {
-  const clave = String(apiKey || '').replace(/['"\r\n\t]/g, '').trim();
+  const clave = String(apiKey || '')
+    .replace(/['"\r\n\t]/g, '')
+    .trim();
 
   if (!clave) {
-    return { estado: 'rechazada', modelo: 'desconocido', mensaje: 'La clave está vacía.' };
+    return {
+      estado: 'rechazada',
+      modelo: 'desconocido',
+      mensaje: 'La clave está vacía.'
+    };
   }
+
+  let temporizador = null;
+  let modeloAProbar = 'desconocido';
 
   try {
     const modelos = await obtenerModelosDisponibles(clave);
-    const modeloAProbar = modeloPedido ? modeloPedido.trim() : modelos[0];
+
+    modeloAProbar = modeloPedido
+      ? modeloPedido.trim()
+      : modelos[0];
 
     const controlador = new AbortController();
-    const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_VERIFICACION_MS);
 
-    const url = construirUrlModelo(modeloAProbar, '', clave);
+    temporizador = setTimeout(
+      () => controlador.abort(),
+      TIMEOUT_VERIFICACION_MS
+    );
+
+    const url = construirUrlModelo(modeloAProbar);
+
+    // La API Key también se envía mediante encabezado en la verificación.
     const respuestaHttp = await fetch(url, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'x-goog-api-key': clave
+      },
       signal: controlador.signal
     });
 
-    clearTimeout(temporizador);
-
     if (respuestaHttp.ok) {
-      return { estado: 'valida', modelo: modeloAProbar, mensaje: `Credencial verificada con el modelo "${modeloAProbar}".` };
+      return {
+        estado: 'valida',
+        modelo: modeloAProbar,
+        mensaje: `Credencial verificada con el modelo "${modeloAProbar}".`
+      };
     }
 
     const datos = await respuestaHttp.json().catch(() => ({}));
     const detalle = datos && datos.error ? datos.error : {};
 
-    if (respuestaHttp.status === 400 || respuestaHttp.status === 401 || respuestaHttp.status === 403) {
+    if (
+      respuestaHttp.status === 400 ||
+      respuestaHttp.status === 401 ||
+      respuestaHttp.status === 403
+    ) {
       return {
         estado: 'rechazada',
         modelo: modeloAProbar,
@@ -205,12 +313,34 @@ async function verificarCredencial(apiKey, modeloPedido) {
       causa: detalle.status || String(respuestaHttp.status)
     };
   } catch (error) {
+    // Solo se considera rechazada cuando Google ha rechazado
+    // explícitamente la credencial o sus permisos.
+    const credencialRechazada =
+      error instanceof AsistenteError && error.noReintentar;
+
+    const causa =
+      error.causa ||
+      error.code ||
+      (error.cause && error.cause.code) ||
+      error.name;
+
     return {
-      estado: 'rechazada',
-      modelo: 'N/A',
-      mensaje: error.message || 'Error al conectar con la API de Gemini.',
-      causa: error.causa || error.name
+      estado: credencialRechazada ? 'rechazada' : 'sin_verificar',
+
+      modelo: modeloAProbar,
+
+      mensaje: credencialRechazada
+        ? error.message
+        : error.name === 'AbortError'
+          ? 'La verificación de la credencial superó el tiempo de espera. No se pudo confirmar si la clave es válida.'
+          : 'No fue posible conectar con la API de Gemini. La clave no fue rechazada, pero tampoco pudo verificarse.',
+
+      causa
     };
+  } finally {
+    if (temporizador) {
+      clearTimeout(temporizador);
+    }
   }
 }
 
@@ -218,15 +348,29 @@ function construirContenidos(historial, mensaje) {
   const contenidos = [];
 
   (Array.isArray(historial) ? historial : []).forEach((turno) => {
-    if (!turno || typeof turno.texto !== 'string') return;
+    if (!turno || typeof turno.texto !== 'string') {
+      return;
+    }
+
     const texto = turno.texto.trim();
-    if (!texto) return;
+
+    if (!texto) {
+      return;
+    }
 
     const rol = turno.rol === 'model' ? 'model' : 'user';
-    contenidos.push({ role: rol, parts: [{ text: texto.slice(0, 4000) }] });
+
+    contenidos.push({
+      role: rol,
+      parts: [{ text: texto.slice(0, 4000) }]
+    });
   });
 
-  contenidos.push({ role: 'user', parts: [{ text: mensaje }] });
+  contenidos.push({
+    role: 'user',
+    parts: [{ text: mensaje }]
+  });
+
   return contenidos;
 }
 
@@ -238,7 +382,10 @@ function traducirErrorHttp(status, cuerpo) {
     return new AsistenteError(
       'Google rechazó la credencial configurada. Revisa GEMINI_API_KEY en backend/.env.',
       502,
-      { causa: motivo }
+      {
+        causa: motivo || String(status),
+        noReintentar: true
+      }
     );
   }
 
@@ -246,7 +393,10 @@ function traducirErrorHttp(status, cuerpo) {
     return new AsistenteError(
       'La credencial no tiene permiso para usar la API de Gemini.',
       502,
-      { causa: motivo }
+      {
+        causa: motivo || String(status),
+        noReintentar: true
+      }
     );
   }
 
@@ -254,7 +404,10 @@ function traducirErrorHttp(status, cuerpo) {
     return new AsistenteError(
       'Cuota de la API agotada o límite de peticiones alcanzado.',
       429,
-      { retryAfter: 60, causa: motivo }
+      {
+        retryAfter: 60,
+        causa: motivo
+      }
     );
   }
 
@@ -274,9 +427,14 @@ function traducirErrorHttp(status, cuerpo) {
 }
 
 function extraerTexto(datos) {
-  const candidato = datos && Array.isArray(datos.candidates) ? datos.candidates[0] : null;
+  const candidato =
+    datos && Array.isArray(datos.candidates)
+      ? datos.candidates[0]
+      : null;
 
-  const bloqueo = datos && datos.promptFeedback && datos.promptFeedback.blockReason;
+  const bloqueo =
+    datos && datos.promptFeedback && datos.promptFeedback.blockReason;
+
   if (bloqueo) {
     throw new AsistenteError(
       'La consulta fue bloqueada por los filtros de seguridad del modelo. Reformúlala.',
@@ -286,15 +444,21 @@ function extraerTexto(datos) {
   }
 
   if (!candidato) {
-    throw new AsistenteError('El modelo no devolvió ninguna respuesta.', 502);
+    throw new AsistenteError(
+      'El modelo no devolvió ninguna respuesta.',
+      502
+    );
   }
 
-  const partes = candidato.content && Array.isArray(candidato.content.parts)
-    ? candidato.content.parts
-    : [];
+  const partes =
+    candidato.content && Array.isArray(candidato.content.parts)
+      ? candidato.content.parts
+      : [];
 
   const texto = partes
-    .map((parte) => (typeof parte.text === 'string' ? parte.text : ''))
+    .map((parte) =>
+      typeof parte.text === 'string' ? parte.text : ''
+    )
     .join('')
     .trim();
 
@@ -306,6 +470,7 @@ function extraerTexto(datos) {
         { causa: 'MAX_TOKENS' }
       );
     }
+
     throw new AsistenteError(
       'El modelo no generó contenido para esta consulta.',
       422,
@@ -326,13 +491,24 @@ async function generarRespuesta({ mensaje, historial = [] }) {
     );
   }
 
-  // Auto-descubrir los modelos asignados a esta API key específica
+  // Auto-descubrir los modelos asignados a esta API key específica.
+  // Los errores de autenticación se propagan y detienen la operación.
   const modelos = await obtenerModelosDisponibles(apiKey);
-  const timeoutMs = leerNumero('GEMINI_TIMEOUT_MS', TIMEOUT_POR_DEFECTO_MS);
-  const maxTokens = leerNumero('GEMINI_MAX_TOKENS', MAX_TOKENS_POR_DEFECTO);
+
+  const timeoutMs = leerNumero(
+    'GEMINI_TIMEOUT_MS',
+    TIMEOUT_POR_DEFECTO_MS
+  );
+
+  const maxTokens = leerNumero(
+    'GEMINI_MAX_TOKENS',
+    MAX_TOKENS_POR_DEFECTO
+  );
 
   const cuerpo = {
-    systemInstruction: { parts: [{ text: INSTRUCCION_SISTEMA }] },
+    systemInstruction: {
+      parts: [{ text: INSTRUCCION_SISTEMA }]
+    },
     contents: construirContenidos(historial, mensaje),
     generationConfig: {
       temperature: 0.4,
@@ -345,13 +521,23 @@ async function generarRespuesta({ mensaje, historial = [] }) {
 
   for (const modelo of modelos) {
     const controlador = new AbortController();
-    const temporizador = setTimeout(() => controlador.abort(), timeoutMs);
+
+    const temporizador = setTimeout(
+      () => controlador.abort(),
+      timeoutMs
+    );
 
     try {
-      const url = construirUrlModelo(modelo, 'generateContent', apiKey);
+      const url = construirUrlModelo(modelo, 'generateContent');
+
+      // La API Key se envía mediante encabezado HTTP.
+      // Nunca se incorpora a la URL.
       const respuestaHttp = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
         body: JSON.stringify(cuerpo),
         signal: controlador.signal
       });
@@ -359,14 +545,23 @@ async function generarRespuesta({ mensaje, historial = [] }) {
       const datos = await respuestaHttp.json().catch(() => ({}));
 
       if (!respuestaHttp.ok) {
-        const err = traducirErrorHttp(respuestaHttp.status, datos);
+        const error = traducirErrorHttp(
+          respuestaHttp.status,
+          datos
+        );
 
-        if (respuestaHttp.status === 401 || respuestaHttp.status === 403) {
-          throw err;
+        // No tiene sentido probar otros modelos si Google rechazó
+        // la credencial o sus permisos.
+        if (error.noReintentar) {
+          throw error;
         }
 
-        ultimoError = err;
-        console.warn(`[Byte IA] Falló el modelo "${modelo}" (HTTP ${respuestaHttp.status}). Probando el siguiente...`);
+        ultimoError = error;
+
+        console.warn(
+          `[Byte IA] Falló el modelo "${modelo}" (HTTP ${respuestaHttp.status}). Probando el siguiente...`
+        );
+
         continue;
       }
 
@@ -379,17 +574,21 @@ async function generarRespuesta({ mensaje, historial = [] }) {
       };
 
     } catch (error) {
-      if (error.name === 'AsistenteError') {
-        if (error.status === 502 && error.message.includes('GEMINI_API_KEY')) {
+      if (error instanceof AsistenteError) {
+        // Los errores de autenticación se propagan inmediatamente.
+        if (error.noReintentar) {
           throw error;
         }
+
         ultimoError = error;
+
       } else if (error.name === 'AbortError') {
         ultimoError = new AsistenteError(
           `El modelo "${modelo}" tardó demasiado en responder.`,
           504,
           { causa: 'timeout' }
         );
+
       } else {
         ultimoError = new AsistenteError(
           'No se pudo contactar con la API de Gemini. Verifica la conexión del servidor.',
@@ -398,7 +597,10 @@ async function generarRespuesta({ mensaje, historial = [] }) {
         );
       }
 
-      console.warn(`[Byte IA] Error con el modelo "${modelo}": ${ultimoError.message}. Probando el siguiente...`);
+      console.warn(
+        `[Byte IA] Error con el modelo "${modelo}": ${ultimoError.message}. Probando el siguiente...`
+      );
+
     } finally {
       clearTimeout(temporizador);
     }
